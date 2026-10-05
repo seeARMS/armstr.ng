@@ -12,6 +12,20 @@ const RESOLVED = `\0${ID}`
 // A preview this small is a few hundred bytes; the page blurs it back up.
 const PREVIEW = 16
 
+// A PNG that's at most this many times bigger kept lossless than as WebP is
+// flat graphics (a screenshot, a diagram), where lossy WebP smudges small text
+// and flat colour. Screenshots in the posts come out 4–10×; a PNG that's really
+// a picture (an AI illustration) came out 17×, and stays WebP.
+const LOSSLESS_LIMIT = 12
+
+// Whether the image should be served lossless, judged on a copy the width of
+// the post column.
+async function isFlat(data) {
+  const column = sharp(data).rotate().resize(680, null, { withoutEnlargement: true })
+  const [png, webp] = await Promise.all([column.clone().png().toBuffer(), column.clone().webp({ quality: 80 }).toBuffer()])
+  return png.length <= webp.length * LOSSLESS_LIMIT
+}
+
 const sources = (html) => [...html.matchAll(/<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1])
 
 async function describe(src) {
@@ -31,6 +45,7 @@ async function describe(src) {
   return {
     width,
     height,
+    lossless: meta.format === 'png' && (await isFlat(data)),
     preview: { src: `data:image/webp;base64,${tiny.toString('base64')}`, width: info.width, height: info.height },
   }
 }

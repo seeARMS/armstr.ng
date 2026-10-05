@@ -27,7 +27,7 @@ export async function getColinArticles({ includeUnlisted = false } = {}) {
 }
 
 export async function getColinArticlesWithContent() {
-  const { items } = await fetchPosts({ includeContent: true })
+  const { items } = await fetchPosts()
 
   return items.map((post) => {
     const slug = siteSlug(post.slug)
@@ -80,12 +80,20 @@ function postsUrl({ includeContent } = {}) {
   return `${API_BASE}/publications/${PUB_ID}/posts?${params}`
 }
 
-async function fetchPosts({ includeContent } = {}) {
-  try {
-    const res = await fetch(postsUrl({ includeContent }))
-    return res.json()
-  } catch (e) {
-    console.error('Failed to fetch posts:', e)
-    return { items: [] }
-  }
+/**
+ * Paragraph's posts, fetched once per build and shared by every page and
+ * /content-version.txt. Paragraph caches each API address separately, so
+ * separate fetches could disagree: pages built without a new post while
+ * content-version.txt lists it, and the cron would never rebuild. (So
+ * `npm run dev` shows a new post only after a restart.)
+ */
+let posts
+function fetchPosts() {
+  posts ??= fetch(postsUrl({ includeContent: true }))
+    .then((res) => res.json())
+    .catch((e) => {
+      console.error('Failed to fetch posts:', e)
+      return { items: [] }
+    })
+  return posts
 }

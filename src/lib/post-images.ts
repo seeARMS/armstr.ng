@@ -1,5 +1,5 @@
 // Images in posts, served the way the rest of the site's images are: Paragraph's
-// originals resized for the post column as WebP at a few widths, with their
+// originals resized for the post column at a few widths, with their
 // real dimensions so the text doesn't jump as they load, loaded only as they
 // near the screen, and a blurred preview holding their place until they
 // arrive. Sizes and previews are read in Node at build time
@@ -8,8 +8,9 @@
 import { getImage } from 'astro:assets'
 import images from 'virtual:post-images'
 
-// The column is 680px wide; 1360px covers it on a 2x screen.
-const WIDTHS = [480, 680, 1024, 1360]
+// The column is 680px wide; 2040px covers it on a 3x screen, and leaves detail
+// for zooming in on a 2x one.
+const WIDTHS = [480, 680, 1024, 1360, 2040]
 const SIZES = '(max-width: 727px) calc(100vw - 32px), 680px'
 
 const ATTRIBUTE = /([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g
@@ -63,8 +64,10 @@ export async function optimizeImages(html: string): Promise<string> {
       width,
       height,
       widths: [...WIDTHS.filter((w) => w < width), width],
-      format: 'webp',
-      quality: 80,
+      // Screenshots stay lossless (see scripts/post-images.mjs). Lossless WebP
+      // would be smaller than PNG, but Astro can only turn that on for every
+      // image on the site, photos included.
+      ...(info.lossless ? { format: 'png' } : { format: 'webp', quality: 80 }),
     })
 
     out = out.replaceAll(

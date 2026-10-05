@@ -17,6 +17,8 @@ declare module 'virtual:post-images' {
   type PostImage = {
     width: number
     height: number
+    /** A PNG of flat graphics (a screenshot), to be served as PNG, not lossy WebP. */
+    lossless: boolean
     /** A ~16px WebP of the image, as a data URL, for the blurred preview. */
     preview: { src: string; width: number; height: number }
   }

@@ -19,7 +19,7 @@ Astro on Cloudflare Workers. The design is set in [Newsreader](https://fonts.goo
 | Markdown versions of pages, and `/llms.txt`, for agents | `src/pages/*.md.ts` and `src/pages/llms.txt.ts`, served by `src/worker.ts` |
 | When a post was last edited (its modified date) | `src/data/posts.ts` |
 
-Publishing, editing, unpublishing or deleting a post on Paragraph rebuilds the site within about five minutes (see Deploy).
+Publishing, editing, unpublishing or deleting a post on Paragraph rebuilds the site, usually within a few minutes (see Deploy).
 
 ## Develop
 
@@ -33,7 +33,7 @@ npm run build     # social preview images, then the site
 
 Pushing to `main` deploys the site. Cloudflare's Workers Builds is connected to this repo: it builds each push and reports back as a "Workers Builds: armstrng" check on the commit.
 
-Changes on Paragraph deploy it too. Each build writes `/content-version.txt`: every post's ID and when Paragraph last updated it. Every five minutes, the Worker's cron (`scheduled` in `src/worker.ts`) compares that file with Paragraph's API, and when they differ it POSTs a Workers Builds deploy hook for `main`. The hook's URL is the `DEPLOY_HOOK_URL` Worker secret (`npm run cf -- secret put DEPLOY_HOOK_URL`); without it, the cron does nothing. Paragraph also updates a post's `updatedAt` when its settings change, which starts a build that changes nothing. To run the cron locally, `npm run build`, then `npm run cf -- dev --test-scheduled --var DEPLOY_HOOK_URL:<url>` and open `/cdn-cgi/handler/scheduled?cron=*/5+*+*+*+*`.
+Changes on Paragraph deploy it too. Each build writes `/content-version.txt`: every post's ID and when Paragraph last updated it. Every minute, the Worker's cron (`scheduled` in `src/worker.ts`) compares that file with Paragraph's API, and when they differ it POSTs a Workers Builds deploy hook for `main`. The hook's URL is the `DEPLOY_HOOK_URL` Worker secret (`npm run cf -- secret put DEPLOY_HOOK_URL`); without it, the cron does nothing. Paragraph also updates a post's `updatedAt` when its settings change, which starts a build that changes nothing. To run the cron locally, `npm run build`, then `npm run cf -- dev --test-scheduled --var DEPLOY_HOOK_URL:<url>` and open `/cdn-cgi/handler/scheduled?cron=*+*+*+*+*`. Paragraph's API caches post lists for ten minutes. Publishing or unpublishing a post clears that cache, so a new post is usually live within about three minutes (a minute for the cron, about a minute and a half for the build).
 
 Everything deploys to the **Colin Personal** Cloudflare account. Its Wrangler login lives in a separate profile (`~/.config/wrangler-personal`), so the work login in the default profile is never used, and `account_id` in `wrangler.jsonc` pins the account as a second guard.
 

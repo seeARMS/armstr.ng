@@ -19,7 +19,7 @@ type Env = Handle[1] & {
 
 export default {
   /**
-   * Every five minutes (triggers.crons in wrangler.jsonc): when Paragraph's
+   * Every minute (triggers.crons in wrangler.jsonc): when Paragraph's
    * posts no longer match the ones the site was built from, start a build.
    * If a build is already queued, the deploy hook returns it instead of
    * queuing another.

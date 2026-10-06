@@ -1,7 +1,7 @@
 // Social preview images (1200×630) for the home page, the writing index and
-// every post. Each is a navy panel set in Geist (the way heade.rs sets its
-// share cards) beside a picture: the illustrated portrait on the home card,
-// the gold end of the homepage banner on the rest. Runs before each build
+// every post. Each is deep navy, set in Geist (the way heade.rs sets its share
+// cards), with the illustrated portrait as a large circle on the right, inside
+// a navy ring. Colours come from the portrait. Runs before each build
 // (`npm run build`).
 import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
@@ -17,18 +17,18 @@ const OUT_DIR = join(ROOT, 'public', 'og')
 
 const W = 1200
 const H = 630
-// The picture takes the right of the card; the type sits on the navy left.
-const PICTURE = 560
-const PANEL = W - PICTURE
-const PAD = 72
+// The portrait sits in a ring centred on the right edge of the card's middle;
+// the type takes the left.
+const RING = { x: 1040, y: 330, r: 330 }
+const PORTRAIT = 560
+const PAD = 76
+const TEXT_WIDTH = 700 - PAD
 
-// The banner's own colours.
+// The portrait's own colours.
+const DEEP = '#0c1729'
 const NAVY = '#12213c'
-const CREAM = '#f2e6d1'
-const CREAM_2 = 'rgba(242, 230, 209, 0.74)'
-const CREAM_3 = 'rgba(242, 230, 209, 0.56)'
-const RULE = 'rgba(242, 230, 209, 0.16)'
-const GOLD = '#daaa56'
+const SLATE_MIST = '#c9d3df'
+const CREAM = '#f3ebdd'
 
 // Geist Regular and SemiBold, the same files heade.rs uses (OFL, see scripts/fonts/OFL.txt).
 const font = (name) => readFileSync(join(import.meta.dirname, 'fonts', `${name}.ttf`))
@@ -65,25 +65,12 @@ async function picture(file, region, width, height) {
   return `data:image/jpeg;base64,${jpeg.toString('base64')}`
 }
 
-// The paper grain of the banner, drawn over the navy so the panel matches the
-// picture beside it: fine light and dark tooth, and faint vertical streaks.
-const GRAIN =
-  '<filter id="grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">' +
-  '<feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed="3" result="fine"/>' +
-  '<feColorMatrix in="fine" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.9 0 0 0 -0.42" result="light"/>' +
-  '<feColorMatrix in="fine" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 -0.9 0 0 0.4" result="dark"/>' +
-  '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.006" numOctaves="3" seed="9" result="streak"/>' +
-  '<feColorMatrix in="streak" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.22 0 0 0 -0.1" result="shade"/>' +
-  '<feMerge><feMergeNode in="shade"/><feMergeNode in="dark"/><feMergeNode in="light"/></feMerge>' +
-  '</filter>'
-
-/** Everything under the type: the grained navy panel and the picture beside it. */
-function background(uri) {
+/** Everything under the type: the deep navy card and the ring around the portrait. */
+function background() {
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><defs>${GRAIN}</defs>` +
-    `<rect width="${PANEL}" height="${H}" fill="${NAVY}"/>` +
-    `<rect width="${PANEL}" height="${H}" filter="url(#grain)" opacity="0.34"/>` +
-    `<image x="${PANEL}" width="${PICTURE}" height="${H}" preserveAspectRatio="none" href="${uri}"/>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
+    `<rect width="${W}" height="${H}" fill="${DEEP}"/>` +
+    `<circle cx="${RING.x}" cy="${RING.y}" r="${RING.r}" fill="${NAVY}"/>` +
     `</svg>`
   return `data:image/png;base64,${new Resvg(svg).render().asPng().toString('base64')}`
 }
@@ -103,95 +90,131 @@ const wordmark = (size) =>
     'div',
     { display: 'flex', fontSize: size, fontWeight: 600, letterSpacing: -size * 0.02, color: CREAM },
     'armstr',
-    h('span', { color: CREAM_3 }, '.ng'),
+    h('span', { color: SLATE_MIST }, '.ng'),
   )
 
-/** Titles get smaller as they get longer, so even a long one fits the panel in four lines. */
-function titleStyle(title) {
-  const n = title.length
-  const size = n <= 28 ? 64 : n <= 44 ? 58 : n <= 60 ? 52 : n <= 84 ? 46 : 40
-  return { fontSize: size, fontWeight: 600, letterSpacing: -size * 0.04, lineHeight: 1.08, color: CREAM }
+// Satori can't measure text for us, so lines are counted by word-wrapping at an
+// average Geist character width of half the font size (a little generous).
+function lineCount(text, size) {
+  const perLine = Math.floor(TEXT_WIDTH / (size * 0.5))
+  let lines = 1
+  let used = 0
+  for (const word of text.split(/\s+/)) {
+    if (used && used + 1 + word.length > perLine) {
+      lines++
+      used = word.length
+    } else used += (used ? 1 : 0) + word.length
+  }
+  return lines
 }
 
-// The site's foot, recoloured: a hairline with a short stroke of gold where it begins.
-const foot = (left, right) =>
+// The room left for the title and subtitle once the wordmark, the Read button
+// and a gap above the button are placed.
+const TEXT_ROOM = H - 64 - 36 - 56 - 68 - 64 - 32
+
+/**
+ * Titles get smaller as they get longer, and smaller again if the subtitle
+ * would push them into the Read button.
+ */
+function titleStyle(title, subtitle) {
+  const n = title.length
+  const sizes = [72, 62, 54, 48, 42]
+  let i = n <= 28 ? 0 : n <= 44 ? 1 : n <= 60 ? 2 : n <= 84 ? 3 : 4
+  const sub = subtitle ? 22 + lineCount(subtitle, 28) * 28 * 1.4 : 0
+  while (i < sizes.length - 1 && lineCount(title, sizes[i]) * sizes[i] * 1.05 + sub > TEXT_ROOM) i++
+  const size = sizes[i]
+  return { fontSize: size, fontWeight: 600, letterSpacing: -size * 0.04, lineHeight: 1.05, color: CREAM }
+}
+
+// A cream "Read" pill with a drawn arrow, so the arrow sits centred beside the
+// word whatever the font does.
+const ARROW =
+  'data:image/svg+xml;base64,' +
+  Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="${NAVY}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10h13M11 4.5l5.5 5.5-5.5 5.5"/></svg>`,
+  ).toString('base64')
+const readButton = () =>
   h(
     'div',
-    { display: 'flex', flexDirection: 'column' },
-    h(
-      'div',
-      { display: 'flex', height: 1.5, backgroundColor: RULE },
-      h('div', { display: 'flex', width: 96, height: 1.5, backgroundColor: GOLD }),
-    ),
-    h(
-      'div',
-      { display: 'flex', justifyContent: 'space-between', paddingTop: 24, fontSize: 23, color: CREAM_3 },
-      left,
-      right,
-    ),
+    {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14,
+      height: 68,
+      padding: '0 36px',
+      borderRadius: 68,
+      backgroundColor: CREAM,
+      color: NAVY,
+      fontSize: 29,
+      fontWeight: 600,
+      letterSpacing: -0.3,
+    },
+    'Read',
+    img(ARROW, 24, 24),
   )
 
-/** The card: its background, with the type laid out in the navy panel. */
-const card = (bg, top, bottom) =>
+/** The card: its background and portrait, with the type down the left. */
+const card = (bg, portrait, top, bottom) =>
   h(
     'div',
     { display: 'flex', width: '100%', height: '100%', fontFamily: 'Geist' },
     img(bg, W, H, { position: 'absolute', left: 0, top: 0 }),
+    img(portrait, PORTRAIT, PORTRAIT, {
+      position: 'absolute',
+      left: RING.x - PORTRAIT / 2,
+      top: RING.y - PORTRAIT / 2,
+      borderRadius: PORTRAIT,
+    }),
     h(
       'div',
       {
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        width: PANEL,
+        width: 700,
         height: '100%',
-        padding: `64px ${PAD}px 60px`,
+        padding: `64px 0 64px ${PAD}px`,
       },
-      h('div', { display: 'flex', flexDirection: 'column' }, ...top),
-      bottom,
+      h('div', { display: 'flex', flexDirection: 'column' }, wordmark(30), ...top),
+      h('div', { display: 'flex', alignItems: 'center', gap: 28, minHeight: 68 }, ...bottom),
     ),
   )
 
-function homeMarkup(bg) {
+const note = (text) => h('div', { display: 'flex', fontSize: 23, color: SLATE_MIST, opacity: 0.8 }, text)
+
+function homeMarkup(bg, portrait) {
   return card(
     bg,
+    portrait,
     [
-      wordmark(32),
       h(
         'div',
-        { marginTop: 62, fontSize: 100, fontWeight: 600, letterSpacing: -4.5, lineHeight: 1, color: CREAM },
+        { marginTop: 56, fontSize: 84, fontWeight: 600, letterSpacing: -3.4, lineHeight: 1, color: CREAM },
         'Colin Armstrong',
       ),
       h(
         'div',
-        { marginTop: 30, width: 480, fontSize: 30, lineHeight: 1.4, color: CREAM_2 },
+        { marginTop: 26, width: 520, fontSize: 30, lineHeight: 1.4, color: SLATE_MIST },
         'Founder & CEO of Paragraph. Previously Google and Coinbase.',
       ),
     ],
-    foot(h('div', {}, 'Writing, projects and photography'), null),
+    [note('Writing, projects and photography')],
   )
 }
 
-function pageMarkup(bg, avatar, { title, subtitle, date }) {
+function pageMarkup(bg, portrait, { title, subtitle, date }) {
   return card(
     bg,
+    portrait,
     [
-      h(
-        'div',
-        { display: 'flex', alignItems: 'center', gap: 14 },
-        img(avatar, 46, 46, { borderRadius: 46, boxShadow: `0 0 0 1.5px rgba(242, 230, 209, 0.3)` }),
-        wordmark(30),
-      ),
-      h('div', { marginTop: 50, ...titleStyle(title) }, title),
-      subtitle ? h('div', { marginTop: 22, fontSize: 27, lineHeight: 1.4, color: CREAM_2 }, subtitle) : null,
+      h('div', { marginTop: 56, ...titleStyle(title, subtitle) }, title),
+      subtitle ? h('div', { marginTop: 22, fontSize: 28, lineHeight: 1.4, color: SLATE_MIST }, subtitle) : null,
     ],
     // Posts give their date; the writing index, which has none, gives its address.
-    foot(h('div', {}, 'Colin Armstrong'), h('div', {}, date || 'armstr.ng/writing')),
+    [readButton(), note(date || 'armstr.ng/writing')],
   )
 }
 
-// Rendered as JPEG: the banner's texture and the grain make a PNG of each card
-// over a megabyte.
 async function render(markup) {
   const svg = await satori(markup, { width: W, height: H, fonts: FONTS })
   const png = new Resvg(svg, { fitTo: { mode: 'width', value: W } }).render().asPng()
@@ -201,32 +224,26 @@ async function render(markup) {
 async function main() {
   console.log('Generating OG images...')
 
-  // The portrait loses a little of its left edge, so its gold line falls just
-  // inside the seam. The banner's right end holds the cream circle, the gold
-  // line and the gold sun.
-  const [portrait, banner, avatar, posts] = await Promise.all([
-    picture('colin.jpg', { left: 110, top: 0, width: 1115, height: 1254 }, PICTURE, H),
-    picture('banner.webp', { left: 1407, top: 0, width: 593, height: 667 }, PICTURE, H),
-    picture('colin.jpg', { left: 210, top: 90, width: 820, height: 820 }, 92, 92),
+  const [portrait, posts] = await Promise.all([
+    picture('colin.jpg', { left: 0, top: 0, width: 1254, height: 1254 }, PORTRAIT, PORTRAIT),
     fetchPosts(),
   ])
-  const home = background(portrait)
-  const page = background(banner)
+  const bg = background()
 
   // Start clean, so a renamed post doesn't leave its old card behind.
   rmSync(OUT_DIR, { recursive: true, force: true })
   mkdirSync(OUT_DIR, { recursive: true })
 
   const pages = [
-    { slug: 'home', markup: homeMarkup(home) },
+    { slug: 'home', markup: homeMarkup(bg, portrait) },
     {
       slug: 'writing',
-      markup: pageMarkup(page, avatar, {
+      markup: pageMarkup(bg, portrait, {
         title: 'Writing',
         subtitle: 'Thoughts on startups, product, engineering, and more.',
       }),
     },
-    ...posts.map((post) => ({ slug: post.slug, markup: pageMarkup(page, avatar, post) })),
+    ...posts.map((post) => ({ slug: post.slug, markup: pageMarkup(bg, portrait, post) })),
   ]
 
   for (const { slug, markup } of pages) {

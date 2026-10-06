@@ -10,7 +10,7 @@ import { longDate, postDescription, readingTime } from '@/lib/format'
 import { blogPosting, breadcrumbs } from '@/lib/schema'
 import { highlight } from '@/lib/highlight'
 import { optimizeImages } from '@/lib/post-images'
-import { headingIds } from '@/lib/headings'
+import { headingIds, headingLinks } from '@/lib/headings'
 
 export async function getStaticPaths() {
   const posts = await getColinArticlesWithContent()
@@ -28,7 +28,7 @@ export async function getStaticPaths() {
 const { slug } = Astro.params
 const { title, subtitle, html, isoDate, updatedIso, allPosts } = Astro.props
 const minutes = html ? readingTime(html) : 0
-const body = html ? await optimizeImages(await highlight(headingIds(html))) : ''
+const body = html ? await optimizeImages(await highlight(headingLinks(headingIds(html)))) : ''
 const path = `/writing/${slug}`
 // Shown only for a post edited on a later day (src/data/posts.ts).
 const updated = longDate(updatedIso) === longDate(isoDate) ? undefined : updatedIso
@@ -90,6 +90,7 @@ const schema = [
         <p class="empty">This post's text couldn't be loaded when the site was built.</p>
       )
     }
+    <p class="print-source">Colin Armstrong · {new URL(path, Astro.site).href}</p>
   </article>
 
   <PageToc />
@@ -124,6 +125,187 @@ const schema = [
     }
     if (img.complete && img.naturalWidth) arrived()
     else img.addEventListener('load', arrived, { once: true })
+  }
+
+  const prose = document.querySelector<HTMLElement>('.prose.body')
+  const here = () => location.origin + location.pathname
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  // The link beside a heading copies the address of that section. Without a
+  // clipboard it's an ordinary link to it.
+  prose?.addEventListener('click', async (e) => {
+    const a = (e.target as Element).closest<HTMLAnchorElement>('a.anchor')
+    if (!a) return
+    e.preventDefault()
+    if (!(await copy(here() + a.hash))) return void (location.hash = a.hash)
+    history.replaceState(history.state, '', a.hash)
+    a.dataset.copied = ''
+    a.setAttribute('aria-label', 'Link copied')
+    setTimeout(() => {
+      delete a.dataset.copied
+      a.setAttribute('aria-label', 'Link to this section')
+    }, 1600)
+  })
+
+  // Printing: each link in the post gets a number, and the addresses are
+  // listed after the post, since paper can't be clicked. Taken out again
+  // once the print dialog closes.
+  if (prose) {
+    let notes: HTMLElement | undefined
+    addEventListener('beforeprint', () => {
+      if (notes) return
+      const urls: string[] = []
+      for (const a of prose.querySelectorAll<HTMLAnchorElement>('a[href]:not(.anchor)')) {
+        if (!/^https?:/.test(a.href) || a.href.startsWith(`${here()}#`)) continue
+        const n = urls.indexOf(a.href) + 1 || urls.push(a.href)
+        const ref = document.createElement('sup')
+        ref.className = 'print-ref'
+        ref.textContent = String(n)
+        a.after(ref)
+      }
+      if (!urls.length) return
+      notes = document.createElement('section')
+      notes.className = 'print-notes'
+      notes.innerHTML = '<h2>Links</h2><ol></ol>'
+      const list = notes.querySelector('ol')!
+      for (const url of urls) list.append(Object.assign(document.createElement('li'), { textContent: url }))
+      prose.after(notes)
+    })
+    addEventListener('afterprint', () => {
+      notes?.remove()
+      notes = undefined
+      for (const ref of prose.querySelectorAll('.print-ref')) ref.remove()
+    })
+  }
+
+  // Select a passage and "Copy link" appears above it: a link that opens the
+  // post scrolled to that passage, highlighted (a text fragment, #:~:text=).
+  // Only with a mouse: phones' own selection menus already offer this.
+  if (prose && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'passage-link'
+    button.hidden = true
+    button.innerHTML =
+      '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.75 9.25a2.6 2.6 0 0 0 3.7 0l2.1-2.1a2.6 2.6 0 0 0-3.7-3.7l-.85.85M9.25 6.75a2.6 2.6 0 0 0-3.7 0l-2.1 2.1a2.6 2.6 0 0 0 3.7 3.7l.85-.85" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Copy link</span>'
+    const label = button.querySelector('span')!
+    document.body.append(button)
+
+    const WORD = /[\p{L}\p{N}]/u
+    const squash = (s: string) => s.replace(/\s+/g, ' ').trim()
+    const encode = (s: string) => encodeURIComponent(s).replace(/-/g, '%2D')
+    const BLOCK = 'p, li, h1, h2, h3, h4, blockquote, figcaption, pre, td, th'
+
+    // The fragment for a selection: the whole passage if it's short, else its
+    // first and last few words. Fragments match whole words, so a word the
+    // selection cuts into is left out, and a start that appears earlier in
+    // the post gets the words before it as a prefix.
+    function fragment(range: Range): string | undefined {
+      const lines = range
+        .toString()
+        .split(/\n+/)
+        .map(squash)
+        .filter(Boolean)
+      if (!lines.length) return
+      const cutStart = isText(range.startContainer) && WORD.test(range.startContainer.data[range.startOffset - 1] ?? '')
+      const cutEnd = isText(range.endContainer) && WORD.test(range.endContainer.data[range.endOffset] ?? '')
+      const words = (line: string) => line.split(' ')
+      let start: string
+      let end = ''
+      if (lines.length === 1) {
+        const all = words(lines[0]).slice(cutStart ? 1 : 0, cutEnd ? -1 : undefined)
+        if (!all.length) return
+        start = all.slice(0, all.length <= 8 ? undefined : 4).join(' ')
+        if (all.length > 8) end = all.slice(-4).join(' ')
+      } else {
+        const head = words(lines[0]).slice(cutStart ? 1 : 0)
+        const tail = words(lines[lines.length - 1]).slice(0, cutEnd ? -1 : undefined)
+        if (!head.length || !tail.length) return
+        start = head.slice(0, 4).join(' ')
+        end = tail.slice(-4).join(' ')
+      }
+
+      let prefix = ''
+      const text = squash(prose!.textContent ?? '').toLowerCase()
+      if (!cutStart && text.indexOf(start.toLowerCase()) !== text.lastIndexOf(start.toLowerCase())) {
+        const block = (isText(range.startContainer) ? range.startContainer.parentElement : (range.startContainer as Element))?.closest(BLOCK)
+        if (block) {
+          const before = document.createRange()
+          before.setStart(block, 0)
+          before.setEnd(range.startContainer, range.startOffset)
+          prefix = squash(before.toString()).split(' ').filter(Boolean).slice(-3).join(' ')
+        }
+      }
+      return `${prefix ? `${encode(prefix)}-,` : ''}${encode(start)}${end ? `,${encode(end)}` : ''}`
+    }
+
+    const isText = (n: Node): n is Text => n.nodeType === Node.TEXT_NODE
+
+    let link = ''
+    let hideTimer = 0
+
+    function hide() {
+      button.hidden = true
+      link = ''
+    }
+
+    function show() {
+      const sel = getSelection()
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return hide()
+      const range = sel.getRangeAt(0)
+      if (!prose!.contains(range.commonAncestorContainer)) return hide()
+      const f = fragment(range)
+      if (!f) return hide()
+      link = `${here()}#:~:text=${f}`
+      clearTimeout(hideTimer)
+      label.textContent = 'Copy link'
+      delete button.dataset.copied
+
+      // Centered above the selection's first line, or below its last when
+      // there's no room above.
+      const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0)
+      if (!rects.length) return hide()
+      const top = rects[0]
+      const bottom = rects[rects.length - 1]
+      button.hidden = false
+      const w = button.offsetWidth
+      const h = button.offsetHeight
+      const box = prose!.getBoundingClientRect()
+      const span = rects.length > 1 ? { left: box.left, right: box.right } : top
+      const x = Math.min(Math.max((span.left + span.right) / 2 - w / 2, 8), innerWidth - w - 8)
+      const above = top.top - h - 10 > 8
+      const y = above ? top.top - h - 10 : bottom.bottom + 10
+      button.style.left = `${x + scrollX}px`
+      button.style.top = `${y + scrollY}px`
+      button.dataset.side = above ? 'above' : 'below'
+    }
+
+    // After the selection settles: on mouse up, or a shift-arrow key.
+    prose.addEventListener('mouseup', () => setTimeout(show))
+    prose.addEventListener('keyup', (e) => {
+      if (e.shiftKey || e.key === 'Shift') show()
+    })
+    document.addEventListener('selectionchange', () => {
+      const sel = getSelection()
+      if (!button.hidden && (!sel || sel.isCollapsed)) hide()
+    })
+    // Keep the selection when the button is pressed.
+    button.addEventListener('mousedown', (e) => e.preventDefault())
+    button.addEventListener('click', async () => {
+      if (!link || !(await copy(link))) return
+      label.textContent = 'Copied'
+      button.dataset.copied = ''
+      hideTimer = window.setTimeout(hide, 1200)
+    })
+    addEventListener('resize', hide)
   }
 </script>
 

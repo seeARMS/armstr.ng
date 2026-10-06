@@ -449,11 +449,19 @@ const schema = [
     padding-inline: var(--gutter);
   }
 
+  /* The back link sits in the space above the title, so the title starts
+     where the Writing page's heading does (.page-head's padding, less the
+     link's 24px line and its 20px gap); clicking into a post keeps the
+     titles in the same place. */
+  .page-head {
+    padding-top: 52px;
+  }
+
   .back {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 28px;
+    margin-bottom: 20px;
     color: var(--ink-2);
     font-size: 16px;
   }
@@ -472,29 +480,50 @@ const schema = [
     transform: translateX(-3px);
   }
 
+  /* The title at display size, set tight, with the subtitle as an italic
+     standfirst under it. */
   .page-head h1 {
     width: fit-content;
-    font-size: 48px;
-    line-height: 1.08;
+    font-size: 64px;
+    font-weight: 340;
+    line-height: 1;
+    letter-spacing: -0.03em;
   }
 
   .page-head .summary {
-    margin-top: 16px;
+    margin-top: 18px;
+    font-size: 24px;
+    font-style: italic;
+    line-height: 1.45;
   }
 
+  /* The date and reading time, after a short rule: a quiet line that
+     closes the header instead of a full-width hairline. */
   .meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 20px;
-    margin-top: 20px;
+    align-items: center;
+    gap: 4px 0;
+    margin-top: 32px;
     color: var(--ink-3);
     font-size: 16px;
   }
 
+  .meta::before {
+    content: '';
+    width: 28px;
+    height: 1px;
+    margin-right: 14px;
+    background: var(--ink);
+  }
+
+  .meta > * + *::before {
+    content: '·';
+    margin-inline: 10px;
+  }
+
   .body {
-    margin-top: 44px;
-    padding-top: 40px;
-    border-top: 1px solid var(--line);
+    margin-top: 52px;
   }
 
   .empty {
@@ -534,13 +563,29 @@ const schema = [
   }
 
   @media (max-width: 639px) {
+    /* The same sum with the phone's 56px padding, and a tighter gap. */
+    .page-head {
+      padding-top: 20px;
+    }
+
+    .back {
+      margin-bottom: 12px;
+    }
+
     .page-head h1 {
-      font-size: 36px;
+      font-size: 42px;
+    }
+
+    .page-head .summary {
+      font-size: 20px;
+    }
+
+    .meta {
+      margin-top: 24px;
     }
 
     .body {
-      margin-top: 32px;
-      padding-top: 30px;
+      margin-top: 36px;
     }
   }
 </style>

@@ -6,6 +6,8 @@
 // when it first appears or goes: it fades in on arrival from elsewhere, grows
 // in (easing the wordmark over) coming from the home page, and shrinks away
 // going back to it. Between other pages it holds still.
+// Scrolling down carries it off the top like the rest of the page; scrolling
+// back up draws it back down at the same pace, as if it had been just above.
 import { Image } from 'astro:assets'
 import avatar from '@/assets/colin.jpg'
 import { pagePath } from '@/lib/path'
@@ -120,10 +122,58 @@ const isActive = (href: string) => path.startsWith(href)
     </script>
   </div>
 </header>
+<!-- The header is sticky with a negative top, so it rides off the page like
+     anything else. Each scroll moves that top by the distance scrolled,
+     between its full height above the screen and flush with the top: up
+     brings it down step for step, down takes it away. Without scripts, the
+     top stays far enough up that it simply scrolls away. -->
+<script is:inline>
+  ;(() => {
+    const nav = document.querySelector('.nav')
+    if (!nav) return
+    const y = () => Math.min(Math.max(scrollY, 0), document.documentElement.scrollHeight - innerHeight)
+    let last = y()
+    let top = -nav.offsetHeight
+    let queued = false
+    const update = () => {
+      queued = false
+      const now = y()
+      const height = nav.offsetHeight
+      top = Math.min(0, Math.max(-height, top - (now - last)))
+      last = now
+      nav.style.setProperty('--nav-top', `${top}px`)
+      // Over the page rather than in its own place at the top: draw an edge.
+      nav.toggleAttribute('data-floating', top > -height && now + top > 0)
+    }
+    addEventListener(
+      'scroll',
+      () => {
+        if (!queued) requestAnimationFrame(update)
+        queued = true
+      },
+      { passive: true },
+    )
+    update()
+  })()
+</script>
 
 <style>
+  /* --nav-top comes from the script under the header. The padding gives the
+     header some room below its links when it's drawn over the page; the
+     negative margin hands that room back to the page when it isn't. */
   .nav {
+    position: sticky;
+    top: var(--nav-top, -100vh);
+    z-index: 30;
+    margin-bottom: -14px;
+    padding-bottom: 14px;
+    background: var(--bg);
     view-transition-name: nav;
+    transition: box-shadow 200ms var(--ease);
+  }
+
+  .nav[data-floating] {
+    box-shadow: 0 1px 0 var(--line);
   }
 
   .inner {

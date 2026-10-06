@@ -117,6 +117,8 @@ const schema = [
 </Layout>
 
 <script>
+  import { mediumDate } from '@/lib/format'
+
   // Once a post image has arrived, drop its blurred preview, so the preview
   // can't show through the transparent parts of a screenshot.
   for (const img of document.querySelectorAll<HTMLImageElement>('.prose img[data-blur]')) {
@@ -185,6 +187,134 @@ const schema = [
       notes = undefined
       for (const ref of prose.querySelectorAll('.print-ref')) ref.remove()
     })
+  }
+
+  // Hovering a link to another page of this site shows what's there: its
+  // heading and opening lines, read from the Markdown version built for
+  // agents (/projects → /projects.md). Only with a mouse, since a tap follows
+  // the link anyway. Links off the site keep the browser's own status bar.
+  if (prose && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    const card = document.createElement('div')
+    card.className = 'link-card'
+    card.hidden = true
+    card.setAttribute('aria-hidden', 'true')
+    card.innerHTML = '<p class="link-card-title"></p><p class="link-card-text"></p><p class="link-card-meta"></p>'
+    const [titleEl, textEl, metaEl] = Array.from(card.children) as HTMLElement[]
+    document.body.append(card)
+
+    type Preview = { title: string; text: string; meta: string }
+    const previews = new Map<string, Promise<Preview | undefined>>()
+
+    // The page a link stands for, when it's another page of this site.
+    function pageOf(a: HTMLAnchorElement) {
+      if (a.classList.contains('anchor')) return
+      let url: URL
+      try {
+        url = new URL(a.href)
+      } catch {
+        return
+      }
+      if (url.host !== location.host && url.hostname !== 'armstr.ng') return
+      const path = url.pathname.replace(/(.)\/+$/, '$1')
+      if (path === location.pathname || /\.\w+$/.test(path)) return
+      return path
+    }
+
+    // Markdown links and emphasis, read as plain text.
+    const plain = (s: string) =>
+      s
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/[*_`]+/g, '')
+        .trim()
+
+    function preview(path: string) {
+      let p = previews.get(path)
+      if (!p) {
+        p = fetch(path === '/' ? '/index.md' : `${path}.md`)
+          .then((res) => (res.ok ? res.text() : Promise.reject()))
+          .then((md) => {
+            const [, head = '', body = md] = md.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/) ?? []
+            const blocks = body.split(/\n{2,}/).map((b) => b.trim())
+            const h1 = blocks.findIndex((b) => b.startsWith('# '))
+            const text = blocks.slice(h1 + 1).find((b) => b && !/^(#|[-*>|]|!\[|```)/.test(b))
+            const published = head.match(/^published: "([^"]+)"/m)?.[1]
+            if (h1 < 0) return undefined
+            return {
+              title: plain(blocks[h1].slice(2)),
+              text: text ? plain(text) : '',
+              meta: published ? mediumDate(published) : `armstr.ng${path === '/' ? '' : path}`,
+            }
+          })
+          .catch(() => undefined)
+        previews.set(path, p)
+      }
+      return p
+    }
+
+    let current: HTMLAnchorElement | undefined
+    let showTimer = 0
+
+    // Where the pointer was over the link, or undefined for keyboard focus.
+    let pointerX: number | undefined
+
+    function place(a: HTMLAnchorElement) {
+      // Below the link (all of it, when it wraps), or above when there's no
+      // room, starting near the pointer.
+      const rects = Array.from(a.getClientRects()).filter((r) => r.width > 0)
+      const first = rects[0] ?? a.getBoundingClientRect()
+      const last = rects[rects.length - 1] ?? first
+      card.hidden = false
+      const w = card.offsetWidth
+      const h = card.offsetHeight
+      const x = Math.min(Math.max((pointerX ?? first.left + 24) - 24, 8), innerWidth - w - 8)
+      const below = last.bottom + 10 + h < innerHeight - 8
+      const y = below ? last.bottom + 10 : first.top - h - 10
+      card.style.left = `${x + scrollX}px`
+      card.style.top = `${y + scrollY}px`
+      card.dataset.side = below ? 'below' : 'above'
+    }
+
+    function hide() {
+      clearTimeout(showTimer)
+      current = undefined
+      card.hidden = true
+    }
+
+    function enter(a: HTMLAnchorElement) {
+      const path = pageOf(a)
+      if (!path || a === current) return
+      hide()
+      current = a
+      const ready = preview(path)
+      // A short pause, so passing over a link on the way elsewhere shows nothing.
+      showTimer = window.setTimeout(async () => {
+        const p = await ready
+        if (!p || current !== a) return
+        titleEl.textContent = p.title
+        textEl.textContent = p.text
+        textEl.hidden = !p.text
+        metaEl.textContent = p.meta
+        place(a)
+      }, 350)
+    }
+
+    prose.addEventListener('pointerover', (e) => {
+      const a = (e.target as Element).closest<HTMLAnchorElement>('a[href]')
+      pointerX = e.clientX
+      if (a) enter(a)
+    })
+    prose.addEventListener('pointerout', (e) => {
+      if (current && !current.contains(e.relatedTarget as Node | null)) hide()
+    })
+    prose.addEventListener('focusin', (e) => {
+      const a = (e.target as Element).closest<HTMLAnchorElement>('a[href]')
+      pointerX = undefined
+      if (a?.matches(':focus-visible')) enter(a)
+    })
+    prose.addEventListener('focusout', hide)
+    addEventListener('scroll', hide, { passive: true })
+    addEventListener('resize', hide)
+    prose.addEventListener('click', hide)
   }
 
   // Select a passage and "Copy link" appears above it: a link that opens the

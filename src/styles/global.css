@@ -499,6 +499,59 @@ a:hover .stroke {
   }
 }
 
+/* What a link to another page of the site leads to, shown on hover. */
+.link-card {
+  position: absolute;
+  z-index: 50;
+  width: min(340px, calc(100vw - 16px));
+  padding: 14px 16px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.1);
+  pointer-events: none;
+  animation: passage-in 180ms var(--ease);
+}
+
+.link-card[hidden] {
+  display: none;
+}
+
+.link-card[data-side='above'] {
+  animation-name: passage-in-below;
+}
+
+.link-card-title {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 450;
+  line-height: 1.3;
+}
+
+.link-card-text {
+  display: -webkit-box;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.link-card-meta {
+  margin-top: 8px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+@media print {
+  .link-card {
+    display: none;
+  }
+}
+
 /* A passage someone linked to (a #:~:text= link): marked like a highlighter
    in the accent, instead of the browser's yellow. */
 ::target-text {

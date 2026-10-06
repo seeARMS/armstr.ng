@@ -43,6 +43,7 @@ const camera = mainCamera(photos)
             data-date={p.date ?? ''}
             data-chips={p.chips.join('|')}
             data-tint={p.tint ? `${p.tint.hue} ${p.tint.chroma}` : undefined}
+            data-night={p.night ? '' : undefined}
             aria-label={p.caption ? `Open photo: ${p.caption}` : p.date ? `Open photo from ${p.date}` : 'Open photo'}
           >
             <Image
@@ -63,7 +64,9 @@ const camera = mainCamera(photos)
     <!-- Runs as soon as the grid is parsed, before the page is first drawn, so
          the photos never move once they're on screen. The order is fresh for
          each visit and kept in history.state, so a reload, or Safari
-         restoring the page behind its snapshot, shows the same order. Photos
+         restoring the page behind its snapshot, shows the same order. The
+         first photo matches the sky outside: after dark it's one of the
+         night-sky shots, and by day it never is. Photos
          that arrive once the page is showing fade in; ones already at hand
          (cached, or loaded while Chrome prerendered the page) just appear. -->
     <script is:inline>
@@ -80,6 +83,10 @@ const camera = mainCamera(photos)
             const j = Math.floor(Math.random() * (i + 1))
             ;[order[i], order[j]] = [order[j], order[i]]
           }
+          const hour = new Date().getHours()
+          const dark = hour >= 20 || hour < 6
+          const lead = order.findIndex((i) => thumbs[i].hasAttribute('data-night') === dark)
+          if (lead > 0) order.unshift(...order.splice(lead, 1))
           try {
             history.replaceState({ ...state, photoOrder: order }, '')
           } catch {}

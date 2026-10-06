@@ -44,3 +44,9 @@ export const captions: Record<string, string> = {
   water: 'Bixby Bridge, Big Sur',
   'yellow_bird-2': 'Yellow-backed oriole',
 }
+
+// Night-sky photos the camera settings don't give away: one without EXIF, and
+// the Moon, which is bright enough for a fast shutter. Exposures of a second
+// or more count already (scripts/photo-meta.mjs). The Photography page opens
+// on one of these after dark.
+export const nightSky = new Set(['astro_3', '4V3A7317-Enhanced-NR'])

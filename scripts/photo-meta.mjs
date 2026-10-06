@@ -65,6 +65,8 @@ async function read() {
             shutter: shutter(x.ExposureTime),
             iso: x.ISO ? `ISO ${x.ISO}` : undefined,
             date: day(x.DateTimeOriginal),
+            // An exposure of a second or more: the night sky.
+            night: x.ExposureTime >= 1 || undefined,
             tint: await tint(buffer),
           },
         ]

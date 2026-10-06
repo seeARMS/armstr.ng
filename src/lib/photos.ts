@@ -3,7 +3,7 @@
 // color, and a large copy for the lightbox. The page and its Markdown version both read this.
 import { getImage } from 'astro:assets'
 import meta from 'virtual:photo-meta'
-import { captions } from '@/data/photos'
+import { captions, nightSky } from '@/data/photos'
 
 const modules = import.meta.glob<{ default: ImageMetadata }>('/src/assets/photos/*.{jpg,jpeg,png,webp}', {
   eager: true,
@@ -28,6 +28,7 @@ export async function getPhotos() {
           caption: captions[name],
           date: m.date,
           tint: m.tint,
+          night: Boolean(m.night) || nightSky.has(name),
           chips: [m.camera, m.lens, m.focal, m.aperture, m.shutter, m.iso].filter(Boolean) as string[],
         }
       }),

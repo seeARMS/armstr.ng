@@ -10,6 +10,8 @@ declare module 'virtual:photo-meta' {
     date?: string
     /** The photo's average color in OKLCH: hue in degrees, and chroma. */
     tint?: { hue: number; chroma: number }
+    /** An exposure of a second or more: the night sky. */
+    night?: boolean
   }
   const meta: Record<string, PhotoMeta>
   export default meta

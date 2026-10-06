@@ -11,6 +11,7 @@ import { blogPosting, breadcrumbs } from '@/lib/schema'
 import { highlight } from '@/lib/highlight'
 import { optimizeImages } from '@/lib/post-images'
 import { headingIds, headingLinks } from '@/lib/headings'
+import { followLinks, mentions } from '@/lib/links'
 
 export async function getStaticPaths() {
   const posts = await getColinArticlesWithContent()
@@ -28,7 +29,7 @@ export async function getStaticPaths() {
 const { slug } = Astro.params
 const { title, subtitle, html, isoDate, updatedIso, allPosts } = Astro.props
 const minutes = html ? readingTime(html) : 0
-const body = html ? await optimizeImages(await highlight(headingLinks(headingIds(html)))) : ''
+const body = html ? await optimizeImages(await highlight(headingLinks(headingIds(followLinks(html))))) : ''
 const path = `/writing/${slug}`
 // Shown only for a post edited on a later day (src/data/posts.ts).
 const updated = longDate(updatedIso) === longDate(isoDate) ? undefined : updatedIso
@@ -36,7 +37,7 @@ const image = `/og/${slug}.jpg`
 const description = postDescription(title, subtitle, html ?? '')
 const words = html ? html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length : undefined
 const schema = [
-  blogPosting({ path, title, description, image, published: isoDate, modified: updatedIso, words }),
+  blogPosting({ path, title, description, image, published: isoDate, modified: updatedIso, words, mentions: mentions(html ?? '') }),
   breadcrumbs([
     { name: 'Writing', path: '/writing' },
     { name: title, path },

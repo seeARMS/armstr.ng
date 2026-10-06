@@ -177,6 +177,8 @@ export function blogPosting(post: {
   published: string
   modified?: string
   words?: number
+  /** Things the post links to, by @id (src/lib/links.ts). */
+  mentions?: { '@id': string }[]
 }) {
   const page = url(post.path)
   return {
@@ -194,6 +196,7 @@ export function blogPosting(post: {
     author: personRef(),
     publisher: personRef(),
     isPartOf: { '@id': `${SITE}/writing#blog` },
+    mentions: post.mentions,
   }
 }
 

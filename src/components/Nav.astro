@@ -2,7 +2,7 @@
 // The top of every page: the wordmark, four places to go, and the theme
 // toggle. It sits on the page like a running head rather than floating over it.
 // Off the home page, a small portrait sits beside the wordmark; the home page
-// has its own, larger one, and a page transition morphs one into the other.
+// has its own, larger one.
 import { Image } from 'astro:assets'
 import avatar from '@/assets/colin.jpg'
 import { pagePath } from '@/lib/path'
@@ -90,7 +90,6 @@ const isActive = (href: string) => path.startsWith(href)
     height: 28px;
     border-radius: 50%;
     box-shadow: 0 0 0 1px var(--line);
-    view-transition-name: face;
   }
 
   .home span span {

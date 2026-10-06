@@ -649,40 +649,6 @@ a:hover .stroke {
   animation-timing-function: var(--ease);
 }
 
-/* Opening a post types its heading in (Layout.astro). The caret is an empty
-   inline span with the bar drawn beside it, so it takes no room and adds no
-   place to break a line: the text never shifts. It blinks twice when the
-   title is done, then goes. */
-.caret {
-  position: relative;
-}
-
-.caret::after {
-  content: '';
-  position: absolute;
-  top: 0.08em;
-  left: 0;
-  height: 0.95em;
-  border-left: 0.06em solid var(--blue);
-}
-
-.caret-done {
-  animation: caret-out 900ms steps(1, end) forwards;
-}
-
-@keyframes caret-out {
-  25%,
-  75% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
 /* The theme switch spreads out from the toggle like ink into paper (the
    circle itself is animated in Layout.astro). */
 :root[data-theme-swap]::view-transition-old(root),

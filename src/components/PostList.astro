@@ -22,8 +22,7 @@ const rows = posts.map((post, i) => ({
       <li class:list={{ 'new-year': byYear && post.firstOfYear }}>
         <a href={post.link}>
           {byYear && <span class="year">{post.firstOfYear ? post.year : ''}</span>}
-          {/* The title hugs its text, so it can grow into a post's heading cleanly. */}
-          <span class="title" data-vt-post={post.link}>
+          <span class="title">
             <span class="stroke">{post.title}</span>
           </span>
           <time class="date" datetime={post.isoDate}>

@@ -402,6 +402,110 @@ a:hover .stroke {
   font-size: 24px;
 }
 
+/* A link to each heading (src/lib/headings.ts), in the margin to its left.
+   It shows on hover or keyboard focus; on a touch screen there's no margin
+   to put it in, so it stays hidden there. */
+.prose :is(h1, h2, h3, h4) {
+  position: relative;
+}
+
+.prose .anchor {
+  position: absolute;
+  top: 0;
+  left: -30px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 1.25em;
+  padding: 0;
+  background: none;
+  color: var(--ink-3);
+  opacity: 0;
+  transition:
+    opacity 160ms,
+    color 160ms;
+}
+
+.prose .anchor svg {
+  width: 16px;
+  height: 16px;
+}
+
+.prose :is(h1, h2, h3, h4):hover .anchor,
+.prose .anchor:focus-visible,
+.prose .anchor[data-copied] {
+  opacity: 1;
+}
+
+.prose .anchor:hover,
+.prose .anchor[data-copied] {
+  color: var(--blue);
+}
+
+@media (hover: none) {
+  .prose .anchor:not(:focus-visible) {
+    display: none;
+  }
+}
+
+/* "Copy link" above a selected passage in a post (writing/[slug].astro). */
+.passage-link {
+  position: absolute;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--ink);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.16);
+  color: var(--bg);
+  font-size: 15px;
+  cursor: pointer;
+  animation: passage-in 160ms var(--ease);
+}
+
+.passage-link[hidden] {
+  display: none;
+}
+
+.passage-link svg {
+  width: 15px;
+  height: 15px;
+}
+
+.passage-link[data-copied] {
+  background: var(--blue);
+  color: var(--surface);
+}
+
+@keyframes passage-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+.passage-link[data-side='below'] {
+  animation-name: passage-in-below;
+}
+
+@keyframes passage-in-below {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+/* A passage someone linked to (a #:~:text= link): marked like a highlighter
+   in the accent, instead of the browser's yellow. */
+::target-text {
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
+  color: inherit;
+}
+
 .prose :is(h1, h2, h3, h4) + * {
   margin-top: 0.6em;
 }
@@ -663,5 +767,151 @@ a:hover .stroke {
 
   .prose pre {
     font-size: 13.5px;
+  }
+}
+
+/* Printing (or saving as PDF) ----------------------------------------------
+   Just the page's own content, in black on white whatever the theme, with
+   the post's links listed by number at the end (writing/[slug].astro adds
+   them just before printing) and where the post lives online. */
+
+.print-source {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 18mm 20mm;
+  }
+
+  :root,
+  :root.dark {
+    --bg: #fff;
+    --surface: #fff;
+    --surface-2: #f2f3f6;
+    --line: #d2d4dc;
+    --line-strong: #b9bcc6;
+    --ink: #000;
+    --ink-prose: #111;
+    --ink-2: #444;
+    --ink-3: #5c5f69;
+    --blue: #2b3fd0;
+    --green: #0b7d3a;
+    --amber: #9a5700;
+    color-scheme: light;
+  }
+
+  body {
+    font-size: 11.5pt;
+  }
+
+  .skip,
+  .nav,
+  .foot,
+  .dialog,
+  .after,
+  .back,
+  .anchor,
+  .passage-link,
+  .lightbox {
+    display: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .post,
+  .container {
+    max-width: none;
+    padding-inline: 0;
+  }
+
+  .page-head h1 {
+    font-size: 26pt;
+  }
+
+  .prose {
+    font-size: 11.5pt;
+    line-height: 1.55;
+  }
+
+  .prose :is(h1, h2) {
+    font-size: 16pt;
+  }
+
+  .prose :is(h3, h4) {
+    font-size: 13.5pt;
+  }
+
+  .prose :is(h1, h2, h3, h4) {
+    break-after: avoid;
+  }
+
+  .prose :is(img, figure, pre, blockquote, table) {
+    break-inside: avoid;
+  }
+
+  .prose img {
+    max-height: 120mm;
+    width: auto;
+    box-shadow: none;
+  }
+
+  /* Wrap code rather than cut it off at the edge of the paper. */
+  .prose pre {
+    font-size: 9pt;
+    white-space: pre-wrap;
+    overflow: visible;
+  }
+
+  .prose a {
+    background: none;
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 2px;
+  }
+
+  .print-ref {
+    margin-left: 1px;
+    color: var(--ink-3);
+    font-size: 0.65em;
+    line-height: 0;
+  }
+
+  .print-notes {
+    margin-top: 2.5em;
+    padding-top: 1em;
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: 9pt;
+  }
+
+  .print-notes h2 {
+    margin-bottom: 0.6em;
+    color: var(--ink);
+    font-size: 11pt;
+    font-weight: 500;
+    break-after: avoid;
+  }
+
+  .print-notes ol {
+    margin: 0;
+    padding-left: 1.6em;
+  }
+
+  .print-notes li {
+    overflow-wrap: anywhere;
+  }
+
+  .print-source {
+    display: block;
+    margin-top: 2em;
+    color: var(--ink-3);
+    font-size: 9pt;
   }
 }

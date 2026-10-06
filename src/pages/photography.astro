@@ -42,6 +42,7 @@ const camera = mainCamera(photos)
             data-caption={p.caption ?? ''}
             data-date={p.date ?? ''}
             data-chips={p.chips.join('|')}
+            data-tint={p.tint ? `${p.tint.hue} ${p.tint.chroma}` : undefined}
             aria-label={p.caption ? `Open photo: ${p.caption}` : p.date ? `Open photo from ${p.date}` : 'Open photo'}
           >
             <Image
@@ -291,8 +292,21 @@ const camera = mainCamera(photos)
     }
   }
 
+  // The backdrop takes on a faint wash of the photo's own color. Its hue
+  // eases the short way round the wheel from one photo to the next.
+  let hue: number | undefined
+  function tint(i: number) {
+    const [h = 0, c = 0] = (thumbs[i].dataset.tint ?? '').split(' ').map(Number)
+    if (hue === undefined) hue = h
+    else hue += ((((h - hue) % 360) + 540) % 360) - 180
+    frost.style.setProperty('--tint-h', String(hue))
+    // Muted photos stay neutral; colorful ones never get louder than a hint.
+    frost.style.setProperty('--tint-c', String(Math.min(c * 0.7, 0.04)))
+  }
+
   function describe(i: number) {
     const t = thumbs[i]
+    tint(i)
     counter.textContent = `${i + 1} / ${thumbs.length}`
     captionEl.textContent = t.dataset.caption ?? ''
     dateEl.textContent = t.dataset.date ?? ''
@@ -646,14 +660,36 @@ const camera = mainCamera(photos)
     pointer-events: auto;
   }
 
+  /* Registered, so the photo's color (set from its data-tint) can ease. */
+  @property --tint-h {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  @property --tint-c {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
   .frost {
+    --tint-l: 0.975;
     position: absolute;
     inset: 0;
     background: color-mix(in srgb, var(--bg) 78%, transparent);
+    background: oklch(var(--tint-l) var(--tint-c, 0) var(--tint-h, 0) / 0.78);
     -webkit-backdrop-filter: blur(28px) saturate(140%);
     backdrop-filter: blur(28px) saturate(140%);
     opacity: 0;
-    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+      opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      --tint-h 0.7s ease,
+      --tint-c 0.7s ease;
+  }
+
+  :global(.dark) .frost {
+    --tint-l: 0.215;
   }
 
   .lightbox[data-open] .frost {

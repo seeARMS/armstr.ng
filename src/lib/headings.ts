@@ -31,3 +31,21 @@ export function headingIds(html: string): string {
     return `<${tag} id="${id}"${attrs}>${inner}</${tag}>`
   })
 }
+
+// A link icon (two chain links), drawn at 16px like the site's other icons.
+const LINK_ICON =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.75 9.25a2.6 2.6 0 0 0 3.7 0l2.1-2.1a2.6 2.6 0 0 0-3.7-3.7l-.85.85M9.25 6.75a2.6 2.6 0 0 0-3.7 0l-2.1 2.1a2.6 2.6 0 0 0 3.7 3.7l.85-.85" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>'
+
+/**
+ * Adds a link to each heading that has an id (run after headingIds), for
+ * copying a link to that section. It sits in the margin and shows on hover
+ * (global.css); the post page copies the address when it's clicked. It has no
+ * text, so the heading's text, which the table of contents reads, is unchanged.
+ */
+export function headingLinks(html: string): string {
+  return html.replace(/<(h[1-4])(\s[^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag: string, attrs: string, inner: string) => {
+    const id = attrs.match(/\sid="([^"]+)"/i)?.[1]
+    if (!id) return match
+    return `<${tag}${attrs}>${inner}<a class="anchor" href="#${id}" aria-label="Link to this section">${LINK_ICON}</a></${tag}>`
+  })
+}

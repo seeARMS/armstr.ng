@@ -1,6 +1,6 @@
 // Every photo on the Photography page, in file-name order, with its caption,
-// its camera settings (from EXIF, see scripts/photo-meta.mjs) and a large copy
-// for the lightbox. The page and its Markdown version both read this.
+// its camera settings (from EXIF, see scripts/photo-meta.mjs), its overall
+// color, and a large copy for the lightbox. The page and its Markdown version both read this.
 import { getImage } from 'astro:assets'
 import meta from 'virtual:photo-meta'
 import { captions } from '@/data/photos'
@@ -27,6 +27,7 @@ export async function getPhotos() {
           full: full.src,
           caption: captions[name],
           date: m.date,
+          tint: m.tint,
           chips: [m.camera, m.lens, m.focal, m.aperture, m.shutter, m.iso].filter(Boolean) as string[],
         }
       }),

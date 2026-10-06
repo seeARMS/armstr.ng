@@ -8,6 +8,8 @@ declare module 'virtual:photo-meta' {
     shutter?: string
     iso?: string
     date?: string
+    /** The photo's average color in OKLCH: hue in degrees, and chroma. */
+    tint?: { hue: number; chroma: number }
   }
   const meta: Record<string, PhotoMeta>
   export default meta

@@ -287,6 +287,21 @@ const graph = schema.length ? JSON.stringify({ '@context': 'https://schema.org',
     <Footer />
     <SubscribeDialog />
 
+    <!-- A note for whoever opens the console. A page Chrome prerendered
+         writes it once it's shown. -->
+    <script is:inline>
+      ;(() => {
+        const note = () =>
+          console.log(
+            "%cHi, I'm Colin.%c\n\nThis site is open source: https://github.com/seeARMS/armstr.ng\nEvery page is also Markdown: add .md to its address, or start at https://armstr.ng/llms.txt\nSay hello: colin@armstr.ng",
+            'font: 500 18px/1.4 Georgia, serif',
+            'font: 13px/1.6 ui-monospace, monospace',
+          )
+        if (document.prerendering) document.addEventListener('prerenderingchange', note, { once: true })
+        else note()
+      })()
+    </script>
+
     <!-- Google Analytics (deferred). A page Chrome prerendered counts as a
          visit when it's shown, not when it loads in the background (maybe
          never shown at all). -->

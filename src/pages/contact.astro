@@ -37,6 +37,9 @@ const listed = socials.filter((s) => s.listed !== false)
         </svg>
         <span data-label>Copy</span>
       </button>
+      <!-- Filled in by the script below, and left out of contact.md.ts,
+           since it changes by the minute. -->
+      <p class="local-time" data-local-time hidden></p>
     </section>
 
     <section class="section" aria-labelledby="elsewhere">
@@ -77,6 +80,37 @@ const listed = socials.filter((s) => s.listed !== false)
 </Layout>
 
 <script>
+  // "It's 9:42 pm for me in the Bay Area, 3 hours behind you."
+  const localTime = document.querySelector<HTMLElement>('[data-local-time]')
+  if (localTime) {
+    const ZONE = 'America/Los_Angeles'
+    const clock = new Intl.DateTimeFormat('en-US', { timeZone: ZONE, hour: 'numeric', minute: '2-digit' })
+    // A zone's wall-clock time, read back as if it were UTC, so two zones'
+    // times can be subtracted.
+    const wall = (d: Date, timeZone?: string) => {
+      const p = Object.fromEntries(
+        new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
+          .formatToParts(d)
+          .map((x) => [x.type, Number(x.value)]),
+      )
+      return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute)
+    }
+    const update = () => {
+      const now = new Date()
+      const time = clock.format(now).replace(/\s?([AP])M$/, (_, x: string) => ` ${x.toLowerCase()}m`)
+      // In hours, to the nearest half: positive when the Bay Area is ahead.
+      const gap = Math.round((wall(now, ZONE) - wall(now)) / 18e5) / 2
+      const n = Math.abs(gap)
+      const hours = `${Math.floor(n) || ''}${n % 1 ? '½' : ''} hour${n > 1 ? 's' : ''}`.replace(/^½ hours?$/, 'half an hour')
+      const relative = gap === 0 ? 'the same time as you' : `${hours} ${gap > 0 ? 'ahead of' : 'behind'} you`
+      localTime.textContent = `It's ${time} for me in the Bay Area, ${relative}.`
+      localTime.hidden = false
+    }
+    update()
+    setInterval(update, 15_000)
+    document.addEventListener('prerenderingchange', update)
+  }
+
   for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
     const label = btn.querySelector('[data-label]')
     btn.addEventListener('click', async () => {
@@ -108,6 +142,13 @@ const listed = socials.filter((s) => s.listed !== false)
     font-weight: 360;
     letter-spacing: -0.015em;
     line-height: 1.2;
+  }
+
+  .local-time {
+    flex-basis: 100%;
+    margin-top: -4px;
+    color: var(--ink-3);
+    font-size: 16px;
   }
 
   .copy {

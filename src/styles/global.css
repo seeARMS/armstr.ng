@@ -538,107 +538,44 @@ a:hover .stroke {
   display: none;
 }
 
-/* What a page transition carries across (see Layout.astro): a post's title or
-   a Work row. They glide a little slower than the page fades around them. */
-::view-transition-group(post-title),
+/* What a page transition carries across (see Layout.astro): a Work row. It
+   glides a little slower than the page fades around it. */
 ::view-transition-group(work-row) {
   animation-duration: 480ms;
   animation-timing-function: var(--ease);
 }
 
-/* A title changes size on the way (19px in a list, 48px as a post's heading).
-   Both views keep their real size and scale together from the top-left
-   corner, so the text grows (or shrinks) evenly while it moves, and the old
-   one hands over to the new early. Layout.astro sets data-move. */
-:root {
-  --title-ratio: 0.396;
+/* Opening a post types its heading in (Layout.astro). The caret is an empty
+   inline span with the bar drawn beside it, so it takes no room and adds no
+   place to break a line: the text never shifts. It blinks twice when the
+   title is done, then goes. */
+.caret {
+  position: relative;
 }
 
-@media (max-width: 639px) {
-  :root {
-    --title-ratio: 0.5;
-  }
+.caret::after {
+  content: '';
+  position: absolute;
+  top: 0.08em;
+  left: 0;
+  height: 0.95em;
+  border-left: 0.06em solid var(--blue);
 }
 
-::view-transition-old(post-title),
-::view-transition-new(post-title) {
-  width: auto;
-  height: auto;
-  transform-origin: 0 0;
-  animation-duration: 480ms;
-  animation-timing-function: var(--ease);
-  animation-fill-mode: both;
+.caret-done {
+  animation: caret-out 900ms steps(1, end) forwards;
 }
 
-html[data-move='grow']::view-transition-old(post-title) {
-  animation-name: title-out-grow;
-}
-
-html[data-move='grow']::view-transition-new(post-title) {
-  animation-name: title-in-grow;
-}
-
-html[data-move='shrink']::view-transition-old(post-title) {
-  animation-name: title-out-shrink;
-}
-
-html[data-move='shrink']::view-transition-new(post-title) {
-  animation-name: title-in-shrink;
-}
-
-@keyframes title-out-grow {
-  from {
-    transform: none;
-    opacity: 1;
-  }
-  35% {
+@keyframes caret-out {
+  25%,
+  75% {
     opacity: 0;
   }
-  to {
-    transform: scale(calc(1 / var(--title-ratio)));
-    opacity: 0;
-  }
-}
-
-@keyframes title-in-grow {
-  from {
-    transform: scale(var(--title-ratio));
-    opacity: 0;
-  }
-  35% {
+  50% {
     opacity: 1;
   }
   to {
-    transform: none;
-    opacity: 1;
-  }
-}
-
-@keyframes title-out-shrink {
-  from {
-    transform: none;
-    opacity: 1;
-  }
-  35% {
     opacity: 0;
-  }
-  to {
-    transform: scale(var(--title-ratio));
-    opacity: 0;
-  }
-}
-
-@keyframes title-in-shrink {
-  from {
-    transform: scale(calc(1 / var(--title-ratio)));
-    opacity: 0;
-  }
-  35% {
-    opacity: 1;
-  }
-  to {
-    transform: none;
-    opacity: 1;
   }
 }
 

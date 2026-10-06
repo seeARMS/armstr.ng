@@ -178,7 +178,9 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
     padding-top: var(--intro-top);
   }
 
+  /* Morphs into the nav's small portrait on other pages (see Nav.astro). */
   .face {
+    view-transition-name: face;
     display: block;
     flex: none;
     width: var(--face);

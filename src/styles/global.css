@@ -541,7 +541,8 @@ a:hover .stroke {
 /* What a page transition carries across (see Layout.astro): a post's title or
    a Work row. They glide a little slower than the page fades around them. */
 ::view-transition-group(post-title),
-::view-transition-group(work-row) {
+::view-transition-group(work-row),
+::view-transition-group(face) {
   animation-duration: 480ms;
   animation-timing-function: var(--ease);
 }

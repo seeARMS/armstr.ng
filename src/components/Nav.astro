@@ -1,9 +1,14 @@
 ---
 // The top of every page: the wordmark, four places to go, and the theme
 // toggle. It sits on the page like a running head rather than floating over it.
+// Off the home page, a small portrait sits beside the wordmark; the home page
+// has its own, larger one, and a page transition morphs one into the other.
+import { Image } from 'astro:assets'
+import avatar from '@/assets/colin.jpg'
 import { pagePath } from '@/lib/path'
 
 const path = pagePath(Astro.url)
+const isHome = path === '/'
 
 const links = [
   { name: 'Writing', href: '/writing' },
@@ -17,7 +22,14 @@ const isActive = (href: string) => path.startsWith(href)
 
 <header class="nav">
   <div class="container inner">
-    <a href="/" class="home" aria-label="armstr.ng home">armstr<span>.ng</span></a>
+    <a href="/" class="home" aria-label="armstr.ng home">
+      {
+        !isHome && (
+          <Image src={avatar} alt="" widths={[28, 56, 84]} sizes="28px" format="webp" quality={82} loading="eager" class="face" />
+        )
+      }
+      <span>armstr<span>.ng</span></span>
+    </a>
 
     <nav class="links" aria-label="Main">
       {
@@ -64,13 +76,24 @@ const isActive = (href: string) => path.startsWith(href)
   }
 
   .home {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-right: auto;
     font-size: 19px;
     font-weight: 500;
     letter-spacing: -0.01em;
   }
 
-  .home span {
+  .face {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--line);
+    view-transition-name: face;
+  }
+
+  .home span span {
     color: var(--ink-2);
     font-weight: 400;
   }

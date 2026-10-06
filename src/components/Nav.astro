@@ -1,9 +1,17 @@
 ---
 // The top of every page: the wordmark, four places to go, and the theme
 // toggle. It sits on the page like a running head rather than floating over it.
+// Off the home page, a small portrait sits beside the wordmark; the home page
+// has its own, larger one, so there it's collapsed to nothing. It only moves
+// when it first appears or goes: it fades in on arrival from elsewhere, grows
+// in (easing the wordmark over) coming from the home page, and shrinks away
+// going back to it. Between other pages it holds still.
+import { Image } from 'astro:assets'
+import avatar from '@/assets/colin.jpg'
 import { pagePath } from '@/lib/path'
 
 const path = pagePath(Astro.url)
+const isHome = path === '/'
 
 const links = [
   { name: 'Writing', href: '/writing' },
@@ -17,7 +25,44 @@ const isActive = (href: string) => path.startsWith(href)
 
 <header class="nav">
   <div class="container inner">
-    <a href="/" class="home" aria-label="armstr.ng home">armstr<span>.ng</span></a>
+    <a href="/" class="home" aria-label="armstr.ng home">
+      <Image
+        src={avatar}
+        alt=""
+        widths={[28, 56, 84]}
+        sizes="28px"
+        format="webp"
+        quality={82}
+        loading="eager"
+        class:list={['face', { away: isHome }]}
+      />
+      <span>armstr<span>.ng</span></span>
+    </a>
+    <!-- Where this page was opened from: the Navigation API knows, even going
+         back; document.referrer is the fallback, though going back it names
+         the page's original referrer. A prerendered page waits until it's
+         shown. -->
+    <script is:inline define:vars={{ isHome }}>
+      ;(() => {
+        const root = document.documentElement
+        const arrive = () => {
+          let from
+          try {
+            from = new URL(navigation.activation.from.url)
+          } catch {
+            try {
+              from = new URL(document.referrer)
+            } catch {}
+          }
+          const local = from && from.origin === location.origin
+          const fromHome = local && from.pathname === '/'
+          const face = isHome ? local && !fromHome && 'shrink' : !local ? 'fade' : fromHome && 'grow'
+          if (face) root.setAttribute('data-face', face)
+        }
+        if (!document.prerendering) return arrive()
+        document.addEventListener('prerenderingchange', arrive, { once: true })
+      })()
+    </script>
 
     <nav class="links" aria-label="Main">
       {
@@ -64,13 +109,63 @@ const isActive = (href: string) => path.startsWith(href)
   }
 
   .home {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 28px;
     margin-right: auto;
     font-size: 19px;
     font-weight: 500;
     letter-spacing: -0.01em;
   }
 
-  .home span {
+  .face {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+
+  .face.away {
+    width: 0;
+    height: 0;
+    margin-right: -10px;
+    opacity: 0;
+  }
+
+  :global(html[data-face='fade']) .face {
+    animation: fade 200ms var(--ease) both;
+  }
+
+  /* The portrait grows from nothing, gap and all, or shrinks back to it, so
+     the wordmark is pushed along by the layout rather than jumping. */
+  :global(html[data-face='grow']) .face {
+    animation: face-grow 420ms var(--ease) both;
+  }
+
+  :global(html[data-face='shrink']) .face {
+    animation: face-shrink 420ms var(--ease) both;
+  }
+
+  @keyframes face-grow {
+    from {
+      width: 0;
+      height: 0;
+      margin-right: -10px;
+      opacity: 0;
+    }
+  }
+
+  @keyframes face-shrink {
+    from {
+      width: 28px;
+      height: 28px;
+      margin-right: 0;
+      opacity: 1;
+    }
+  }
+
+  .home span span {
     color: var(--ink-2);
     font-weight: 400;
   }

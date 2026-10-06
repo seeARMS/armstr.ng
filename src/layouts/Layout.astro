@@ -111,10 +111,10 @@ const graph = schema.length ? JSON.stringify({ '@context': 'https://schema.org',
       })()
     </script>
 
-    <!-- Page transitions carry one thing across: the post title you clicked
-         grows into the post's heading (and back again), and a Work row glides
-         to its place on Projects & Work. Only that element is named, just
-         before the swap, so nothing else flies around. -->
+    <!-- Page transitions: opening a post types its heading in (see type()
+         below), and a Work row glides to its place on Projects & Work. Only
+         the Work row is named, just before the swap, so nothing else flies
+         around. Leaving a post, the page simply fades. -->
     <script is:inline>
       ;(() => {
         if (!('onpagereveal' in window)) return
@@ -133,16 +133,48 @@ const graph = schema.length ? JSON.stringify({ '@context': 'https://schema.org',
         const find = (attr, value) => document.querySelector(`[${attr}="${CSS.escape(value)}"]`)
 
         // The same choice on both pages, from the addresses alone: the post
-        // being opened (its title grows), else the post being left (its title
-        // shrinks back into the list), else the Work role asked for.
+        // being opened (its heading types in, nothing moves), else the Work
+        // role asked for.
         function pair(fromHref, toHref) {
           clear()
           const from = new URL(fromHref)
           const to = new URL(toHref)
-          if (isPost(to.pathname) && name(find('data-vt-post', to.pathname), 'post-title')) return 'grow'
-          if (isPost(from.pathname) && name(find('data-vt-post', from.pathname), 'post-title')) return 'shrink'
+          if (isPost(to.pathname)) return 'type'
           const role = (to.pathname === '/projects' && to.hash) || (from.pathname === '/projects' && from.hash)
           if (role && name(find('data-vt-work', decodeURIComponent(role.slice(1))), 'work-row')) return 'work'
+        }
+
+        // Types a heading in where it stands. The untyped rest stays in place,
+        // invisible, so the lines wrap as they will at the end and nothing
+        // shifts; the caret sits between the two. Screen readers get the whole
+        // title at once.
+        function type(el) {
+          if (!el) return
+          const text = el.textContent
+          const done = document.createElement('span')
+          const caret = document.createElement('span')
+          const rest = document.createElement('span')
+          caret.className = 'caret'
+          rest.style.visibility = 'hidden'
+          rest.textContent = text
+          for (const part of [done, caret, rest]) part.setAttribute('aria-hidden', 'true')
+          el.setAttribute('aria-label', text)
+          el.replaceChildren(done, caret, rest)
+          // About 30ms a letter, but never more than a second in all.
+          const step = Math.min(30, 1000 / text.length)
+          const start = performance.now() + 120
+          const tick = (now) => {
+            const n = Math.max(0, Math.min(text.length, Math.floor((now - start) / step)))
+            done.textContent = text.slice(0, n)
+            rest.textContent = text.slice(n)
+            if (n < text.length) return requestAnimationFrame(tick)
+            caret.classList.add('caret-done')
+            caret.addEventListener('animationend', () => {
+              el.textContent = text
+              el.removeAttribute('aria-label')
+            })
+          }
+          requestAnimationFrame(tick)
         }
 
         addEventListener('pageswap', (e) => {
@@ -152,16 +184,11 @@ const graph = schema.length ? JSON.stringify({ '@context': 'https://schema.org',
         addEventListener('pagereveal', (e) => {
           const from = window.navigation?.activation?.from?.url
           if (!e.viewTransition || !from) return
-          const root = document.documentElement
-          const move = pair(from, location.href)
-          if (move) root.dataset.move = move
+          if (pair(from, location.href) === 'type') type(find('data-vt-post', location.pathname))
           // Whatever should wait for the page to settle (a Work entry
           // unfolding) can wait on this.
           window.arrival = e.viewTransition.finished.catch(() => {})
-          window.arrival.then(() => {
-            clear()
-            delete root.dataset.move
-          })
+          window.arrival.then(clear)
         })
       })()
     </script>

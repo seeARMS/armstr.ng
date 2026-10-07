@@ -1,5 +1,5 @@
 import { siteSlug } from './slug.js'
-import { edited, unlisted } from '../data/posts.ts'
+import { discussions, edited, unlisted } from '../data/posts.ts'
 
 const API_BASE = 'https://public.api.paragraph.com/api/v1'
 const PUB_ID = '3eJHzLXKQHclhCdsO4Yr'
@@ -40,6 +40,8 @@ export async function getColinArticlesWithContent() {
       html: post.staticHtml,
       /** Paragraph's own Markdown of the post, for its Markdown version. */
       markdown: post.markdown,
+      /** A thread about the post elsewhere, like Hacker News (src/data/posts.ts). */
+      discussion: discussions[slug],
       /** When its text last changed (src/data/posts.ts), else when it was published. */
       updatedIso: edited[slug] ?? isoDate,
       isoDate,
@@ -96,4 +98,21 @@ function fetchPosts() {
       return { items: [] }
     })
   return posts
+}
+
+/**
+ * How many people subscribe to the blog on Paragraph, fetched once per build.
+ * Undefined when the API can't be reached, so pages build without the number
+ * rather than failing.
+ */
+let subscribers
+export function getSubscriberCount() {
+  subscribers ??= fetch(`${API_BASE}/publications/${PUB_ID}/subscribers/count`)
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Paragraph's API answered ${res.status}`))))
+    .then(({ count }) => (typeof count === 'number' ? count : undefined))
+    .catch((e) => {
+      console.error('Failed to fetch the subscriber count:', e)
+      return undefined
+    })
+  return subscribers
 }

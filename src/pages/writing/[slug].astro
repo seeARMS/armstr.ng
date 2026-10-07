@@ -5,8 +5,8 @@ import Layout from '@/layouts/Layout.astro'
 import PageToc from '@/components/PageToc.astro'
 import PostList from '@/components/PostList.astro'
 import SubscribeForm from '@/components/SubscribeForm.astro'
-import { getColinArticlesWithContent } from '@/lib/getAllArticles'
-import { longDate, postDescription, readingTime } from '@/lib/format'
+import { getColinArticlesWithContent, getSubscriberCount } from '@/lib/getAllArticles'
+import { longDate, postDescription, readingTime, subscribeNote } from '@/lib/format'
 import { blogPosting, breadcrumbs } from '@/lib/schema'
 import { highlight } from '@/lib/highlight'
 import { optimizeImages } from '@/lib/post-images'
@@ -27,7 +27,7 @@ export async function getStaticPaths() {
 }
 
 const { slug } = Astro.params
-const { title, subtitle, html, isoDate, updatedIso, allPosts } = Astro.props
+const { title, subtitle, html, isoDate, updatedIso, discussion, allPosts } = Astro.props
 const minutes = html ? readingTime(html) : 0
 const body = html ? await optimizeImages(await highlight(headingLinks(headingIds(followLinks(html))))) : ''
 const path = `/writing/${slug}`
@@ -37,7 +37,17 @@ const image = `/og/${slug}.jpg`
 const description = postDescription(title, subtitle, html ?? '')
 const words = html ? html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length : undefined
 const schema = [
-  blogPosting({ path, title, description, image, published: isoDate, modified: updatedIso, words, mentions: mentions(html ?? '') }),
+  blogPosting({
+    path,
+    title,
+    description,
+    image,
+    published: isoDate,
+    modified: updatedIso,
+    words,
+    mentions: mentions(html ?? ''),
+    discussion: discussion?.url,
+  }),
   breadcrumbs([
     { name: 'Writing', path: '/writing' },
     { name: title, path },
@@ -81,6 +91,11 @@ const schema = [
           )
         }
         {minutes > 0 && <span>{minutes} minute read</span>}
+        {
+          discussion && (
+            <span class="discussion"><a class="link" href={discussion.url} rel="noopener">Discussed on {discussion.site}</a></span>
+          )
+        }
       </p>
     </header>
 
@@ -99,7 +114,7 @@ const schema = [
   <aside class="after" aria-label="More">
     <section class="follow" aria-labelledby="subscribe">
       <h2 id="subscribe">Subscribe</h2>
-      <p class="muted">Get new posts delivered to your inbox.</p>
+      <p class="muted">{subscribeNote(await getSubscriberCount())}</p>
       <SubscribeForm />
     </section>
 
@@ -522,6 +537,14 @@ const schema = [
     margin-inline: 10px;
   }
 
+  .meta a {
+    transition: color 120ms;
+  }
+
+  .meta a:hover {
+    color: var(--ink);
+  }
+
   .body {
     margin-top: 52px;
   }
@@ -563,9 +586,9 @@ const schema = [
   }
 
   @media (max-width: 639px) {
-    /* The same sum with the phone's 56px padding, and a tighter gap. */
+    /* The same sum with the phone's 76px padding, and a tighter gap. */
     .page-head {
-      padding-top: 20px;
+      padding-top: 40px;
     }
 
     .back {
@@ -582,6 +605,21 @@ const schema = [
 
     .meta {
       margin-top: 24px;
+    }
+
+    /* No rule on a phone: the line starts at the margin like the text. */
+    .meta::before {
+      content: none;
+    }
+
+    /* Too long to share the line on a phone, where it would wrap behind a
+       stray dot: the thread gets its own line, under the date. */
+    .meta .discussion {
+      flex-basis: 100%;
+    }
+
+    .meta .discussion::before {
+      content: none;
     }
 
     .body {

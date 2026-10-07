@@ -8,6 +8,13 @@
 // canonical URLs were set, which would have called a 2021 post fresh.
 export const edited: Record<string, string> = {}
 
+// Where a post was discussed elsewhere, by its slug on this site. The post
+// links to the thread beside its date, and names it in its structured data
+// (discussionUrl) and its Markdown version.
+export const discussions: Record<string, { site: string; url: string }> = {
+  'worth-building': { site: 'Hacker News', url: 'https://news.ycombinator.com/item?id=49971952' },
+}
+
 // Posts left off every list on the site: the writing archive, the home page,
 // "Keep reading", the RSS feed, llms.txt and the Markdown versions. Each post's
 // page still builds and stays in the sitemap, so links from elsewhere keep

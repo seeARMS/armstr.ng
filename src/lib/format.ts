@@ -105,3 +105,14 @@ export function postDescription(title: string, subtitle: string | undefined, htm
   }
   return out || `${title}, by Colin Armstrong.`
 }
+
+/**
+ * The line over a subscribe field. It counts the readers, rounded down to the
+ * hundred so it never claims more than there are (921 → "900+"), and leaves
+ * the number out below a hundred or when Paragraph couldn't say.
+ */
+export function subscribeNote(subscribers: number | undefined) {
+  if (!subscribers || subscribers < 100) return 'Get new posts delivered to your inbox.'
+  const floor = Math.floor(subscribers / 100) * 100
+  return `Join ${floor.toLocaleString('en-US')}+ readers and get new posts delivered to your inbox.`
+}

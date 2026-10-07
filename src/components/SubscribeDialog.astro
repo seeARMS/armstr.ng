@@ -1,5 +1,7 @@
 ---
 import SubscribeForm from './SubscribeForm.astro'
+import { getSubscriberCount } from '@/lib/getAllArticles'
+import { subscribeNote } from '@/lib/format'
 ---
 
 <dialog class="dialog" aria-labelledby="subscribe-title" data-subscribe-dialog>
@@ -11,7 +13,7 @@ import SubscribeForm from './SubscribeForm.astro'
       </svg>
     </button>
   </div>
-  <p class="note">Get new posts delivered to your inbox.</p>
+  <p class="note">{subscribeNote(await getSubscriberCount())}</p>
   <SubscribeForm />
 </dialog>
 

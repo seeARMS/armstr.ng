@@ -315,14 +315,16 @@ const isActive = (href: string) => path.startsWith(href)
   }
 
   /* On a phone the wordmark and the toggle share the top line, and the links
-     spread across the line beneath, so Contact ends under the toggle. This
-     starts below 520px rather than the site's usual 640px: one line fits from
-     there, and on anything wider the spread-out links would drift apart. */
+     spread across the line beneath, so Contact ends under the toggle. A
+     hairline between the two, like a masthead's, keeps the links with the
+     header instead of the page. This starts below 520px rather than the
+     site's usual 640px: one line fits from there, and on anything wider the
+     spread-out links would drift apart. */
   @media (max-width: 519px) {
     .inner {
       flex-wrap: wrap;
-      row-gap: 6px;
-      padding-top: 20px;
+      row-gap: 14px;
+      padding-top: 26px;
     }
 
     .links {
@@ -330,6 +332,8 @@ const isActive = (href: string) => path.startsWith(href)
       width: 100%;
       justify-content: space-between;
       column-gap: 12px;
+      padding-top: 13px;
+      border-top: 1px solid var(--line);
       font-size: 16px;
     }
   }

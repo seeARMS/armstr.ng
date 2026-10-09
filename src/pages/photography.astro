@@ -560,7 +560,12 @@ const camera = mainCamera(photos)
 
   lightbox.addEventListener('pointerup', (e) => release(e, false))
   lightbox.addEventListener('pointercancel', (e) => release(e, true))
-  lightbox.addEventListener('lostpointercapture', (e) => release(e, true))
+  // Only the viewer's own capture counts. A touch starts out captured by the
+  // photo it lands on, and taking that capture over fires (and bubbles) a
+  // lostpointercapture from the photo, which mustn't end the swipe.
+  lightbox.addEventListener('lostpointercapture', (e) => {
+    if (e.target === lightbox) release(e, true)
+  })
   // A drag that ends where it started would otherwise count as a click (and
   // one over the backdrop would close the viewer).
   lightbox.addEventListener(

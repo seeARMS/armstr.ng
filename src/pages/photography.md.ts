@@ -2,7 +2,8 @@
 // its caption and how it was taken. Its copy repeats photography.astro's;
 // change both.
 import type { APIRoute } from 'astro'
-import { abs, frontMatter, markdown } from '@/lib/markdown'
+import { person } from '@/data/profile'
+import { abs, frontMatter, link, markdown } from '@/lib/markdown'
 import { getPhotos, mainCamera } from '@/lib/photos'
 
 export const prerender = true
@@ -26,5 +27,6 @@ export const GET: APIRoute = async () => {
         return `- ![${photo.caption ?? ''}](${abs(photo.full)})${about ? `\n  ${about}` : ''}`
       })
       .join('\n'),
+    `All photos © ${person.name}, all rights reserved. To use one, email ${link(person.email, `mailto:${person.email}`)}.`,
   )
 }

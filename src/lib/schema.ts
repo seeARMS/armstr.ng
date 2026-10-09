@@ -203,7 +203,11 @@ export function blogPosting(post: {
   }
 }
 
-/** Photos credited to Colin, for Google Images' creator and credit details. */
+/**
+ * Photos credited to Colin, for Google Images' creator, credit and
+ * "Licensable" details. They're all rights reserved: `license` points at the
+ * note saying so under the grid, and `acquireLicensePage` at the contact page.
+ */
 export function imageGallery(photos: { src: string; caption?: string }[]) {
   return {
     '@type': 'ImageGallery',
@@ -218,6 +222,8 @@ export function imageGallery(photos: { src: string; caption?: string }[]) {
       creator: { '@type': 'Person', '@id': PERSON_ID, name: person.name },
       creditText: person.name,
       copyrightNotice: `© ${person.name}`,
+      license: url('/photography#license'),
+      acquireLicensePage: url('/contact'),
     })),
   }
 }

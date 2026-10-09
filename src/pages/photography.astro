@@ -2,6 +2,7 @@
 export const prerender = true
 
 import { Image } from 'astro:assets'
+import { person } from '@/data/profile'
 import Layout from '@/layouts/Layout.astro'
 import { getPhotos, mainCamera } from '@/lib/photos'
 import { breadcrumbs, imageGallery } from '@/lib/schema'
@@ -113,6 +114,13 @@ const camera = mainCamera(photos)
         }
       })()
     </script>
+
+    <!-- Each photo's structured data (imageGallery in src/lib/schema.ts) names
+         this note as its license. -->
+    <p class="license" id="license">
+      All photos © {person.name}, all rights reserved. To use one, email
+      <a class="link" href={`mailto:${person.email}`}>{person.email}</a>.
+    </p>
   </div>
 
   <div class="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" data-lightbox inert>
@@ -640,6 +648,12 @@ const camera = mainCamera(photos)
     .thumb :global(img:not([data-loaded])) {
       opacity: 0;
     }
+  }
+
+  .license {
+    margin-top: 28px;
+    color: var(--ink-3);
+    font-size: 16px;
   }
 
   /* The viewer ------------------------------------------------------------- */

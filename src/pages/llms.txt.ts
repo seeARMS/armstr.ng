@@ -3,7 +3,7 @@
 // src/data/profile.ts.
 import type { APIRoute } from 'astro'
 import { paragraph, person, projects, socials, work } from '@/data/profile'
-import { mediumDate, tenure } from '@/lib/format'
+import { mediumDate, monthYear, tenure } from '@/lib/format'
 import { getColinArticles } from '@/lib/getAllArticles'
 import { abs, link } from '@/lib/markdown'
 
@@ -31,7 +31,9 @@ export const GET: APIRoute = async () => {
       `- Coinbase, ${years('Coinbase')}: payments engineer. He helped launch Coinbase in Canada and improved its Bitcoin private-key signing.`,
       '- Angel investor in early-stage startups such as Farcaster, Daimo and Layer3, and in a few venture funds.',
       '- Side projects:',
-      ...projects.map((project) => `  - ${link(project.name, project.href)}: ${project.summary}`),
+      ...projects.map(
+        (project) => `  - ${link(project.name, project.href)} · ${monthYear(project.started)}: ${project.summary}`,
+      ),
       '- Lives in the San Francisco Bay Area. Photographs wildlife, landscapes and the night sky.',
       `- Email: ${person.email}. Profiles: ${socials.map((s) => `${s.name} ${link(s.handle, s.href)}`).join(', ')}.`,
     ].join('\n'),

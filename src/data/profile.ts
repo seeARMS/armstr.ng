@@ -81,7 +81,7 @@ export type Project = {
 export const projects: Project[] = [
   {
     name: 'Appears',
-    summary: 'Shows related files while you work, powered by local embeddings',
+    summary: 'Finds the file you forgot you had before you think to search, all on your Mac',
     href: 'https://appea.rs',
     started: '2026-10',
     logo: '/appears.svg',
@@ -89,7 +89,7 @@ export const projects: Project[] = [
   },
   {
     name: 'heade.rs',
-    summary: 'Domain and IP lookup with live routes and latency',
+    summary: 'Everything about any domain or IP in one lookup, from live routes to AI crawler access',
     href: 'https://heade.rs',
     started: '2026-09',
     logo: 'headers',
@@ -97,7 +97,7 @@ export const projects: Project[] = [
   },
   {
     name: 'Draftside',
-    summary: 'Private writing editor with on-device AI',
+    summary: 'An AI writing editor with no server: the model runs inside your browser',
     href: 'https://draftside.ai',
     started: '2026-05',
     logo: '/draftside.svg',
@@ -105,7 +105,7 @@ export const projects: Project[] = [
   },
   {
     name: 'Council',
-    summary: 'CLI that runs three AI models and synthesizes one answer',
+    summary: 'Puts Codex, Claude and Gemini on the same question and merges their best answers',
     href: 'https://council.armstr.ng',
     started: '2026-04',
     logo: '/council.svg',

@@ -9,7 +9,12 @@ export const prerender = true
 
 export const GET: APIRoute = async () => {
   const articles = await getColinArticles()
-  const [headers, draftside, council] = projects
+  const projectLinks = projects
+    .map(
+      (project, index) =>
+        `${index > 0 ? (index === projects.length - 1 ? ', and ' : ', ') : ''}${link(project.name, project.href)}`,
+    )
+    .join('')
 
   return markdown(
     frontMatter({ title: `${person.name} – ${person.title}`, description: person.description, url: abs('/') }),
@@ -17,7 +22,7 @@ export const GET: APIRoute = async () => {
     // The bio, as on the home page (index.astro); change both.
     `I'm building ${link('Paragraph', 'https://paragraph.com')}, the media engine for early-stage startups. We help founders turn launches, product updates, and what they're learning into media they own. We've raised $7 million from investors including USV and Coinbase Ventures, and in 2024 we acquired Mirror.`,
     `Before that, I led anti-abuse and privacy engineering teams at Google and helped build Coinbase's payments infrastructure. I also angel invest in early-stage startups like ${link('Farcaster', 'https://farcaster.xyz')}, ${link('Daimo', 'https://daimo.com')}, and ${link('Layer3', 'https://layer3.xyz')}, and in a few venture funds that do the same.`,
-    `On the side I build small tools like ${link(headers.name, headers.href)}, ${link(draftside.name, draftside.href)}, and ${link(council.name, council.href)}. In my free time I enjoy ${link('photography', abs('/photography'))}, wine, cooking & cycling.`,
+    `On the side I build small tools like ${projectLinks}. In my free time I enjoy ${link('photography', abs('/photography'))}, wine, cooking & cycling.`,
     articles.length > 0 &&
       [
         '## Writing',

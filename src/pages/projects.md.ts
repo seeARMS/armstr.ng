@@ -14,7 +14,7 @@ export const GET: APIRoute = () => {
     frontMatter({
       title: 'Projects, work and press – Colin Armstrong',
       description:
-        "Colin Armstrong's side projects (heade.rs, Draftside, Council), his work at Paragraph, Mirror, Google and Coinbase, and his podcast and press appearances.",
+        "Colin Armstrong's side projects (Appears, heade.rs, Draftside, Council), his work at Paragraph, Mirror, Google and Coinbase, and his podcast and press appearances.",
       url: abs('/projects'),
     }),
     '# Projects & Work',
@@ -22,7 +22,9 @@ export const GET: APIRoute = () => {
     [
       '## Projects',
       "Small products & experiments I've built.",
-      projects.map((project) => `- ${link(project.name, project.href)}: ${project.summary}`).join('\n'),
+      projects
+        .map((project) => `- ${link(project.name, project.href)} · ${monthYear(project.started)}: ${project.summary}`)
+        .join('\n'),
     ].join('\n\n'),
     [
       '## Work',

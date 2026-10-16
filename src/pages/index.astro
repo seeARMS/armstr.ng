@@ -16,7 +16,6 @@ import { profilePage } from '@/lib/schema'
 
 // The bio below is repeated in this page's Markdown version (index.md.ts); change both.
 const articles = await getColinArticles()
-const [headers, draftside, council] = projects
 const portrait = await getImage({ src: avatar, width: 400, height: 400, format: 'jpg' })
 const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrait.src, Astro.site).href)
 ---
@@ -96,11 +95,14 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
         >, and in a few venture funds that do the same.
       </p>
       <p style="--i:2">
-        On the side I build small tools like <a class="link" href={headers.href} rel="noopener">{headers.name}</a>, <a
-          class="link"
-          href={draftside.href}
-          rel="noopener">{draftside.name}</a
-        >, and <a class="link" href={council.href} rel="noopener">{council.name}</a>. In my free time I enjoy <a
+        On the side I build small tools like {
+          projects.map((project, index) => (
+            <>{index > 0 && (index === projects.length - 1 ? ', and ' : ', ')}<a
+              class="link"
+              href={project.href}
+              rel="noopener">{project.name}</a></>
+          ))
+        }. In my free time I enjoy <a
           class="link snap"
           href="/photography"
           >photography<span class="fan" aria-hidden="true"

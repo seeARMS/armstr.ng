@@ -6,7 +6,6 @@ import Layout from '@/layouts/Layout.astro'
 import PostList from '@/components/PostList.astro'
 import WorkList from '@/components/WorkList.astro'
 import avatar from '@/assets/colin.jpg'
-import banner from '@/assets/banner.webp'
 import heron from '@/assets/photos/heron.jpg'
 import motmot from '@/assets/photos/4V3A8589.jpg'
 import fitzRoy from '@/assets/photos/4V3A1468-HDR.jpg'
@@ -46,43 +45,29 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
     })()
   </script>
 
-  <div class="stage">
-    <div class="backdrop" aria-hidden="true">
-      <Image
-        src={banner}
-        alt=""
-        widths={[1080, 2000]}
-        sizes="(max-width: 639px) 1080px, 1800px"
-        format="webp"
-        quality={80}
-        loading="eager"
-        class="art"
-      />
-    </div>
-    <header class="container intro">
-      <Image
-        src={avatar}
-        alt="Portrait of Colin Armstrong"
-        widths={[80, 160, 240]}
-        sizes="80px"
-        format="webp"
-        quality={82}
-        loading="eager"
-        fetchpriority="high"
-        class="face"
-      />
-      <h1>{person.name}</h1>
-    </header>
-  </div>
+  <header class="container intro">
+    <Image
+      src={avatar}
+      alt="Portrait of Colin Armstrong"
+      widths={[80, 160, 240]}
+      sizes="80px"
+      format="webp"
+      quality={82}
+      loading="eager"
+      fetchpriority="high"
+      class="face"
+    />
+    <h1>{person.name}</h1>
+  </header>
 
   <div class="container">
     <div class="bio">
-      <p style="--i:0">
+      <p>
         I'm building <a class="link" href="https://paragraph.com" rel="noopener">Paragraph</a>, the media engine for
         early-stage startups. We help founders turn launches, product updates, and what they're learning into media they
         own. We've raised $7 million from investors including USV and Coinbase Ventures, and in 2024 we acquired Mirror.
       </p>
-      <p style="--i:1">
+      <p>
         Before that, I led anti-abuse and privacy engineering teams at Google and helped build Coinbase's payments
         infrastructure. I also angel invest in early-stage startups like <a
           class="link"
@@ -94,7 +79,7 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
           rel="noopener">Layer3</a
         >, and in a few venture funds that do the same.
       </p>
-      <p style="--i:2">
+      <p>
         On the side I build small tools like {
           projects.map((project, index) => (
             <>{index > 0 && (index === projects.length - 1 ? ', and ' : ', ')}<a
@@ -120,7 +105,7 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
 
     {
       articles.length > 0 && (
-        <section class="section lists" aria-labelledby="writing">
+        <section class="section" aria-labelledby="writing">
           <div class="section-head">
             <h2 id="writing">Writing</h2>
             <a class="more" href="/writing">
@@ -142,7 +127,7 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
       )
     }
 
-    <section class="section lists" aria-labelledby="work">
+    <section class="section" aria-labelledby="work">
       <div class="section-head">
         <h2 id="work">Work</h2>
         <a class="more" href="/projects">
@@ -164,16 +149,9 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
 </Layout>
 
 <style>
-  /* How far below the nav the portrait sits, and how big it is. The banner
-     behind it lines up with both. */
-  .stage {
+  .intro {
     --intro-top: 104px;
     --face: 80px;
-    position: relative;
-    isolation: isolate;
-  }
-
-  .intro {
     display: flex;
     align-items: center;
     gap: 24px;
@@ -187,98 +165,6 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
     height: var(--face);
     border-radius: 50%;
     box-shadow: 0 0 0 1px var(--line);
-  }
-
-  /* The banner, shown only for a moment: on arrival it spreads out from the
-     portrait behind the name, holds, and drains back in, leaving the page
-     white. Pointing at the portrait brings it back. Spread out, it runs across
-     the page, fading in below the nav and ending in a curved hem above the
-     bio, pale enough (with its cream circle behind the name) for the name to
-     read. */
-  .backdrop {
-    /* The column's left edge, and how far past the column the banner shows. */
-    --col: max(var(--gutter), 50% - var(--page) / 2);
-    --reach: 330px;
-    /* It shows inside a soft-edged circle around the portrait. At rest the
-       circle's radius is minus its soft edge, so none of it shows; spread
-       out, it covers the whole banner. */
-    --face-x: calc(var(--col) + var(--face) / 2);
-    --face-y: calc(var(--intro-top) + var(--face) / 2);
-    --feather: 240px;
-    --bloom: calc(var(--feather) * -1);
-    --bloom-end: 960px;
-    /* How far below the nav it takes to fade in, and how wide the hem's curve
-       is: wide enough to pass under the portrait. (A plain length: Chrome
-       drops a gradient whose ellipse size uses calc() or max().) */
-    --rise: 96px;
-    --hem: 1000px;
-    --mask:
-      radial-gradient(
-        circle at var(--face-x) var(--face-y),
-        #000 var(--bloom),
-        transparent calc(var(--bloom) + var(--feather))
-      ),
-      radial-gradient(ellipse var(--hem) 100% at 50% 0, #000 calc(100% - 1px), transparent),
-      linear-gradient(transparent, rgb(0 0 0 / 0.4) calc(var(--rise) * 0.42), #000 var(--rise)),
-      linear-gradient(
-        to right,
-        transparent calc(var(--col) - var(--reach)),
-        #000 calc(var(--col) - var(--reach) + 185px),
-        #000 calc(100% - var(--col) + var(--reach) - 185px),
-        transparent calc(100% - var(--col) + var(--reach))
-      );
-    position: absolute;
-    z-index: -1;
-    inset: 0 0 -20px;
-    overflow: hidden;
-    pointer-events: none;
-    opacity: 0.46;
-    -webkit-mask-image: var(--mask);
-    -webkit-mask-composite: source-in;
-    mask-image: var(--mask);
-    mask-composite: intersect;
-    transition: --bloom 0.9s cubic-bezier(0.5, 0, 0.25, 1);
-  }
-
-  /* Pointing at the portrait spreads the banner out again, and moving away
-     drains it back. */
-  @media (hover: hover) {
-    .stage:has(.face:hover) .backdrop {
-      --bloom: var(--bloom-end);
-      transition-duration: 1.4s;
-      transition-timing-function: cubic-bezier(0.3, 0.5, 0.2, 1);
-    }
-  }
-
-  /* The banner's size, and where it sits: the point 62% across and 31.5% down
-     it, inside its cream circle, goes behind the middle of the name (--name-x
-     from the column's edge). The banner is three times as wide as it is tall. */
-  .art {
-    --art-width: 1800px;
-    --name-x: 310px;
-    position: absolute;
-    top: calc(var(--face-y) - 0.315 * var(--art-width) / 3);
-    left: calc(var(--col) + var(--name-x) - 0.62 * var(--art-width));
-    width: var(--art-width);
-    max-width: none;
-    height: auto;
-    filter: saturate(1.35);
-  }
-
-  /* At night, dimmer and less blue. */
-  :global(.dark) .backdrop {
-    opacity: 0.3;
-  }
-
-  :global(.dark) .art {
-    filter: saturate(0.8);
-  }
-
-  /* When someone asks for more contrast, the name gets plain paper. */
-  @media (forced-colors: active), (prefers-contrast: more) {
-    .backdrop {
-      display: none;
-    }
   }
 
   h1 {
@@ -362,98 +248,53 @@ const schema = profilePage(`${person.name} – ${person.title}`, new URL(portrai
     }
   }
 
-  /* Arrival, once per visit: the name inks in (thin and soft to its full
-     weight), the portrait settles, the rest follows, and the banner spreads
-     out from the portrait like ink into paper, then drains back in. */
+  /* Soft focus, once per visit: a five-pixel lift resolves with the name,
+     while the portrait and bio fade gently into place. */
   @media (prefers-reduced-motion: no-preference) {
     :global(html:not(.seen)) h1 {
-      animation: ink-in 1.3s var(--ease) both;
+      animation: soft-focus 900ms cubic-bezier(0.16, 0.7, 0.25, 1) both;
     }
 
     :global(html:not(.seen)) .face {
-      animation: settle 0.9s var(--ease) 0.1s both;
+      animation: settle 650ms var(--ease) both;
     }
 
-    /* Backwards only: it ends where it rests anyway, and letting go of the
-       last frame leaves the portrait's hover free to bring it back. */
-    :global(html:not(.seen)) .backdrop {
-      animation: spread 4.4s 0.2s backwards;
-    }
-
-    :global(html:not(.seen)) .bio p {
-      animation: fade 0.9s ease-out both;
-      animation-delay: calc(0.45s + var(--i) * 0.09s);
-    }
-
-    :global(html:not(.seen)) .lists {
-      animation: fade 0.9s ease-out 0.85s both;
+    :global(html:not(.seen)) .bio {
+      animation: arrival-fade 650ms ease-out 100ms both;
     }
   }
 
-  @keyframes ink-in {
+  @keyframes soft-focus {
     from {
-      opacity: 0;
-      font-weight: 200;
-      filter: blur(5px);
+      opacity: 0.25;
+      filter: blur(3px);
+      transform: translateY(5px);
     }
-    45% {
+    to {
       opacity: 1;
+      filter: blur(0);
+      transform: translateY(0);
     }
   }
 
   @keyframes settle {
     from {
-      opacity: 0;
-      transform: scale(0.9);
+      opacity: 0.5;
+      transform: scale(0.97);
     }
   }
 
-  /* How far the banner has spread from the portrait (the backdrop sets it).
-     Registered so it can be animated. */
-  @property --bloom {
-    syntax: '<length>';
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  /* Out from the portrait, a pause, and back in. */
-  @keyframes spread {
+  @keyframes arrival-fade {
     from {
-      --bloom: calc(var(--feather) * -1);
-      animation-timing-function: cubic-bezier(0.45, 0.1, 0.2, 1);
-    }
-    50% {
-      --bloom: var(--bloom-end);
-    }
-    68% {
-      --bloom: var(--bloom-end);
-      animation-timing-function: cubic-bezier(0.5, 0, 0.25, 1);
-    }
-    to {
-      --bloom: calc(var(--feather) * -1);
+      opacity: 0.5;
     }
   }
 
   @media (max-width: 639px) {
-    .stage {
+    .intro {
       --intro-top: 56px;
       --face: 56px;
-    }
-
-    .intro {
       gap: 16px;
-    }
-
-    .backdrop {
-      --bloom-end: 600px;
-      --rise: 52px;
-      --hem: 120%;
-      bottom: -16px;
-    }
-
-    .art {
-      --art-width: 1080px;
-      --name-x: 196px;
     }
 
     h1 {

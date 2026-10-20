@@ -267,7 +267,7 @@ export const appearances: Appearance[] = [
   {
     outlet: 'Inside the Den',
     title: 'The 3 pillars of building Paragraph',
-    href: 'https://insidetheden.captivate.fm/episode/paragraph-and-its-three-pillars-with-colin-arnstrong',
+    href: 'https://podcasts.apple.com/us/podcast/the-3-pillars-of-building-paragraph-with-colin-armstrong/id1645870915?i=1000608401644',
     date: '2023-04',
     kind: 'Podcast',
   },

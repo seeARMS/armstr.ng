@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "node scripts/generate-og.mjs && astro build",
+    "og:video": "node scripts/generate-og-video.mjs",
     "preview": "npm run build && XDG_CONFIG_HOME=\"$HOME/.config/wrangler-personal\" wrangler dev",
     "deploy": "npm run build && XDG_CONFIG_HOME=\"$HOME/.config/wrangler-personal\" wrangler deploy",
     "lint": "eslint src",

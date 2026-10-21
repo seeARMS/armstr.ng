@@ -44,6 +44,9 @@ const canonicalUrl = new URL(path, Astro.site).href
 const markdownPath = path === '/' ? '/index.md' : `${path}.md`
 
 const imageUrl = new URL(image || '/og/home.jpg', Astro.site).href
+// Pages that share the home card also get its video (scripts/generate-og-video.mjs),
+// which iMessage plays in place of the still.
+const videoUrl = imageUrl.endsWith('/og/home.jpg') ? new URL('/video/home.mp4', Astro.site).href : undefined
 
 const graph = schema.length ? JSON.stringify({ '@context': 'https://schema.org', '@graph': schema }) : undefined
 ---
@@ -73,6 +76,17 @@ const graph = schema.length ? JSON.stringify({ '@context': 'https://schema.org',
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:image" content={imageUrl} />
+    {
+      videoUrl && (
+        <>
+          <meta property="og:video" content={videoUrl} />
+          <meta property="og:video:secure_url" content={videoUrl} />
+          <meta property="og:video:type" content="video/mp4" />
+          <meta property="og:video:width" content="1200" />
+          <meta property="og:video:height" content="630" />
+        </>
+      )
+    }
     <meta property="og:site_name" content="Colin Armstrong" />
     {publishedDate && <meta property="article:published_time" content={publishedDate} />}
     {modifiedDate && <meta property="article:modified_time" content={modifiedDate} />}

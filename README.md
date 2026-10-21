@@ -15,6 +15,7 @@ Astro on Cloudflare Workers. The design is set in [Newsreader](https://fonts.goo
 | Images in posts (resized to WebP, real dimensions, blurred preview) | `src/lib/post-images.ts`, with sizes and previews from `scripts/post-images.mjs` |
 | Design tokens and shared styles | `src/styles/global.css` |
 | Social preview images | `scripts/generate-og.mjs`, run before each build; set in Geist from `scripts/fonts/` |
+| Share video (og:video, which iMessage plays) | `scripts/generate-og-video.mjs`; needs ffmpeg, so run `npm run og:video` by hand after changing it (the roles it cycles through are at the top of the script) and commit `public/video/home.mp4` |
 | Redirects from old addresses (www.armstr.ng, writing.cma.xyz, blog.colinarms.com, cma.xyz, colinarms.com) | `redirect/index.js`, a separate Worker; old paths on armstr.ng itself are in `public/_redirects` |
 | Markdown versions of pages, and `/llms.txt`, for agents | `src/pages/*.md.ts` and `src/pages/llms.txt.ts`, served by `src/worker.ts` |
 | When a post was last edited (its modified date) | `src/data/posts.ts` |

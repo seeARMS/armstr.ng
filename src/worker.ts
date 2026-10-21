@@ -6,7 +6,8 @@
 // assets.run_worker_first in wrangler.jsonc); everything else is served
 // straight from the static files.
 //
-// It also rebuilds the site when a post changes on Paragraph (see scheduled).
+// It also answers byte-range requests for the share video (see video), and
+// rebuilds the site when a post changes on Paragraph (see scheduled).
 import { handle } from '@astrojs/cloudflare/handler'
 import { getLiveContentVersion } from './lib/getAllArticles.js'
 import { prefersMarkdown } from './lib/negotiate'
@@ -39,6 +40,7 @@ export default {
   async fetch(request: Request, env: Handle[1], ctx: Handle[2]) {
     const url = new URL(request.url)
     const reading = request.method === 'GET' || request.method === 'HEAD'
+    if (reading && url.pathname.startsWith('/video/')) return video(request, env)
     const source = reading ? markdownFor(url.pathname, request.headers.get('accept')) : undefined
     if (source) {
       const file = await env.ASSETS.fetch(new URL(source.file, url))
@@ -68,6 +70,34 @@ export default {
 async function page(request: Request, env: Handle[1], ctx: Handle[2]) {
   const file = await env.ASSETS.fetch(request)
   return file.status === 404 ? handle(request, env, ctx) : file
+}
+
+/**
+ * A video, with byte ranges. Static assets answer a Range request with the
+ * whole file and a 200, and iOS won't play a video from a server that does
+ * that, which includes iMessage playing the share video (og:video). The
+ * videos are small, so the Worker reads the file and slices it.
+ */
+async function video(request: Request, env: Handle[1]) {
+  const file = await env.ASSETS.fetch(request.url)
+  const headers = new Headers(file.headers)
+  headers.set('accept-ranges', 'bytes')
+  const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('range') ?? '')
+  if (!file.ok || !range)
+    return new Response(request.method === 'HEAD' ? null : file.body, { status: file.status, headers })
+
+  const body = await file.arrayBuffer()
+  const size = body.byteLength
+  // "bytes=a-b", "bytes=a-" (to the end) or "bytes=-n" (the last n).
+  const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]))
+  const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1
+  if (start > end || start >= size) {
+    headers.set('content-range', `bytes */${size}`)
+    return new Response(null, { status: 416, headers })
+  }
+  headers.set('content-range', `bytes ${start}-${end}/${size}`)
+  headers.set('content-length', String(end - start + 1))
+  return new Response(request.method === 'HEAD' ? null : body.slice(start, end + 1), { status: 206, headers })
 }
 
 /** The Markdown file a request should get, if any, and the page it stands for. */

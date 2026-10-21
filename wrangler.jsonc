@@ -11,8 +11,10 @@
     "binding": "ASSETS",
     // Pages and their Markdown versions reach the Worker first, so it can
     // answer an agent's Accept: text/markdown. Everything else (images,
-    // scripts, fonts) is served straight from the static files.
+    // scripts, fonts) is served straight from the static files, except the
+    // share video, which needs byte ranges for iOS to play it.
     "run_worker_first": [
+      "/video/*",
       "/",
       "/index.md",
       "/writing",

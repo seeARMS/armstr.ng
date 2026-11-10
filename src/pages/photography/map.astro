@@ -202,7 +202,12 @@ const pct = (x: number, y: number) => `left: ${((x / atlas.width) * 100).toFixed
     dot.addEventListener('pointerleave', () => pair(slug, false))
   }
 
-  show(decodeURIComponent(location.hash.slice(1)) || undefined)
+  // The place in the address: on arrival, when a page Chrome prerendered
+  // without it is shown for a link that has one, and when it changes.
+  const fromAddress = () => show(decodeURIComponent(location.hash.slice(1)) || undefined)
+  fromAddress()
+  addEventListener('hashchange', fromAddress)
+  document.addEventListener('prerenderingchange', fromAddress, { once: true })
 </script>
 
 <style>

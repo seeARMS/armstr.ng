@@ -12,7 +12,16 @@ const RESOLVED = `\0${ID}`
 const DIR = fileURLToPath(new URL('../src/assets/photos/', import.meta.url))
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-const TAGS = ['Model', 'LensModel', 'FocalLength', 'FNumber', 'ExposureTime', 'ISO', 'DateTimeOriginal']
+const TAGS = [
+  'Model',
+  'LensModel',
+  'FocalLength',
+  'FocalLengthIn35mmFormat',
+  'FNumber',
+  'ExposureTime',
+  'ISO',
+  'DateTimeOriginal',
+]
 
 // "RF100-500mm F4.5-7.1 L IS USM" reads as "RF100-500mm".
 const shortLens = (lens) => lens?.match(/^\S*\d+(?:-\d+)?mm/)?.[0] ?? lens
@@ -54,13 +63,20 @@ async function read() {
       try {
         const buffer = await readFile(DIR + file)
         const x = (await exifr.parse(buffer, { pick: TAGS, reviveValues: false })) ?? {}
+        const camera = x.Model?.trim()
+        const lensFull = x.LensModel?.trim()
+        // A phone names its lens after itself ("iPhone X back dual camera 4mm
+        // f/1.8"), which the camera chip already says, and its real focal
+        // length (4mm) reads best as the 35mm equivalent (28mm).
+        const builtIn = Boolean(camera && lensFull?.startsWith(camera))
+        const focal = (builtIn && x.FocalLengthIn35mmFormat) || x.FocalLength
         return [
           name,
           {
-            camera: x.Model?.trim(),
-            lens: shortLens(x.LensModel?.trim()),
-            lensFull: x.LensModel?.trim(),
-            focal: x.FocalLength ? `${Math.round(x.FocalLength)}mm` : undefined,
+            camera,
+            lens: builtIn ? undefined : shortLens(lensFull),
+            lensFull,
+            focal: focal ? `${Math.round(focal)}mm` : undefined,
             aperture: x.FNumber ? `f/${Number(x.FNumber.toFixed(1))}` : undefined,
             shutter: shutter(x.ExposureTime),
             iso: x.ISO ? `ISO ${x.ISO}` : undefined,

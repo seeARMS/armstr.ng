@@ -19,7 +19,7 @@ export const GET: APIRoute = async () => {
       url: abs('/photography/map'),
     }),
     '# Where the photos were taken',
-    `Where each of ${link(`${person.name}'s photos`, abs('/photography.md'))} was taken. His camera doesn't record location, so most of these come from the photos his phone took around the same time. Coordinates are rounded to the town, park or valley. The places are listed with the most recently visited first.`,
+    `Where each of ${link(`${person.name}'s photos`, abs('/photography.md'))} was taken. Coordinates are rounded to the town, park or valley. The places are listed with the most recently visited first.`,
     ...places.map((place) =>
       [
         `## ${place.label}`,

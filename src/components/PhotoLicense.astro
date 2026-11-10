@@ -1,0 +1,18 @@
+---
+// Each photo's structured data (imageGallery in src/lib/schema.ts) names
+// this note, on /photography, as its license.
+import { person } from '@/data/profile'
+---
+
+<p class="license" id="license">
+  All photos © {person.name}, all rights reserved. To use one, email
+  <a class="link" href={`mailto:${person.email}`}>{person.email}</a>.
+</p>
+
+<style>
+  .license {
+    margin-top: 28px;
+    color: var(--ink-3);
+    font-size: 16px;
+  }
+</style>

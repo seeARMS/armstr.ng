@@ -1,0 +1,54 @@
+---
+// One collection of the Photography page: wildlife, landscape, astro or
+// abstract (src/data/photos.ts). Its Markdown version is [collection].md.ts.
+export const prerender = true
+
+import Lightbox from '@/components/Lightbox.astro'
+import PhotoGrid from '@/components/PhotoGrid.astro'
+import PhotoLicense from '@/components/PhotoLicense.astro'
+import PhotoTabs from '@/components/PhotoTabs.astro'
+import { collections, type Collection } from '@/data/photos'
+import { person } from '@/data/profile'
+import Layout from '@/layouts/Layout.astro'
+import { collectionKeys, getPhotos, tabCounts } from '@/lib/photos'
+import { breadcrumbs, imageGallery } from '@/lib/schema'
+
+export function getStaticPaths() {
+  return collectionKeys.map((collection) => ({ params: { collection } }))
+}
+
+const key = Astro.params.collection as Collection
+const collection = collections[key]
+const path = `/photography/${key}`
+const all = await getPhotos()
+const photos = all.filter((p) => p.collection === key)
+---
+
+<Layout
+  title={collection.title}
+  description={collection.description}
+  image={`/photos/${key}.jpg`}
+  schema={[
+    imageGallery(
+      photos.map((p) => ({ src: p.full, caption: p.caption, place: p.place?.label })),
+      { path, name: `${collection.title} by ${person.name}` },
+    ),
+    breadcrumbs([
+      { name: 'Photography', path: '/photography' },
+      { name: collection.name, path },
+    ]),
+  ]}
+>
+  <div class="container wide">
+    <header class="page-head">
+      <h1>Photography</h1>
+      <p class="summary">{collection.summary}</p>
+    </header>
+
+    <PhotoTabs current={key} counts={tabCounts(all)} />
+    <PhotoGrid photos={photos} />
+    <PhotoLicense />
+  </div>
+
+  <Lightbox />
+</Layout>

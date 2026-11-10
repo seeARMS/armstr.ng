@@ -1,0 +1,106 @@
+---
+// The Photography pages' grid: every photo it's given, shuffled.
+import PhotoThumb from '@/components/PhotoThumb.astro'
+import type { Photo } from '@/lib/photos'
+
+interface Props {
+  photos: Photo[]
+}
+
+const { photos } = Astro.props
+---
+
+<div class="grid" data-grid data-photo-set>
+  {
+    photos.map((p) => (
+      <PhotoThumb photo={p} widths={[400, 800, 1200]} sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 300px" />
+    ))
+  }
+</div>
+
+<!-- Runs as soon as the grid is parsed, before the page is first drawn, so
+     the photos never move once they're on screen. The order is fresh for
+     each visit and kept in history.state, so a reload, or Safari
+     restoring the page behind its snapshot, shows the same order. The
+     first photo matches the sky outside: after dark it's one of the
+     night-sky shots, and by day it never is. Photos
+     that arrive once the page is showing fade in; ones already at hand
+     (cached, or loaded while Chrome prerendered the page) just appear. -->
+<script is:inline>
+  ;(() => {
+    const grid = document.querySelector('[data-grid]')
+    const thumbs = Array.from(grid.children)
+    const n = thumbs.length
+    const state = history.state && typeof history.state === 'object' ? history.state : {}
+    let order = state.photoOrder
+    const valid = Array.isArray(order) && order.length === n && new Set(order).size === n && order.every((i) => thumbs[i])
+    if (!valid) {
+      order = thumbs.map((_, i) => i)
+      for (let i = n - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[order[i], order[j]] = [order[j], order[i]]
+      }
+      const hour = new Date().getHours()
+      const dark = hour >= 20 || hour < 6
+      const lead = order.findIndex((i) => thumbs[i].hasAttribute('data-night') === dark)
+      if (lead > 0) order.unshift(...order.splice(lead, 1))
+      try {
+        history.replaceState({ ...state, photoOrder: order }, '')
+      } catch {}
+    }
+    grid.append(...order.map((i) => thumbs[i]))
+
+    let shownAt = document.prerendering ? Infinity : performance.now()
+    document.addEventListener('prerenderingchange', () => (shownAt = performance.now()), { once: true })
+    for (const img of grid.querySelectorAll('img')) {
+      if (img.complete) {
+        img.dataset.loaded = ''
+        continue
+      }
+      img.addEventListener(
+        'load',
+        () => {
+          img.dataset.loaded = ''
+          if (performance.now() - shownAt > 200) {
+            img.animate({ opacity: [0, 1] }, { duration: 600, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' })
+          }
+        },
+        { once: true },
+      )
+    }
+  })()
+</script>
+
+<style>
+  .grid {
+    margin-top: 40px;
+    columns: 4 240px;
+    column-gap: 12px;
+  }
+
+  .grid :global(.thumb) {
+    width: 100%;
+    margin: 0 0 12px;
+    break-inside: avoid;
+  }
+
+  /* A photo stays hidden until it has loaded (the script above fades in the
+     ones that arrive late). Without a script they simply appear. */
+  @media (scripting: enabled) {
+    .grid :global(img:not([data-loaded])) {
+      opacity: 0;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .grid {
+      margin-top: 28px;
+      columns: 2;
+      column-gap: 8px;
+    }
+
+    .grid :global(.thumb) {
+      margin-bottom: 8px;
+    }
+  }
+</style>

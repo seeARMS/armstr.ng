@@ -1,0 +1,673 @@
+---
+// The photo viewer: opens over the page from any photo thumbnail
+// (PhotoThumb.astro) and steps through the others in its set. Pages include
+// it once.
+---
+
+<div class="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" data-lightbox inert>
+  <div class="frost" data-frost></div>
+  <img class="lb-img" data-lb-img alt="" draggable="false" hidden />
+  <img class="lb-img" data-lb-img alt="" draggable="false" hidden />
+  <button class="btn square lb-close" type="button" aria-label="Close" data-lb-close>
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+    </svg>
+  </button>
+  <div class="lb-bar" data-lb-bar>
+    <div class="lb-info" aria-live="polite">
+      <p class="lb-title"><span data-lb-caption></span><span class="faint" data-lb-date></span></p>
+      <p class="lb-settings" data-lb-chips></p>
+    </div>
+    <div class="lb-nav">
+      <button class="btn square" type="button" aria-label="Previous photo" data-lb-prev>
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M13 8H3.5M7.5 4l-4 4 4 4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+      </button>
+      <span class="lb-count" data-lb-counter></span>
+      <button class="btn square" type="button" aria-label="Next photo" data-lb-next>
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M3 8h9.5M8.5 4l4 4-4 4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // The photos the viewer steps through: the ones in the set (a grid, or one
+  // place's strip on the map) that the opened photo belongs to, in the order
+  // the page shows them. The grid is shuffled before it's drawn.
+  let thumbs: HTMLElement[] = []
+
+  const lightbox = document.querySelector<HTMLElement>('[data-lightbox]')!
+  const frost = lightbox.querySelector<HTMLElement>('[data-frost]')!
+  const bar = lightbox.querySelector<HTMLElement>('[data-lb-bar]')!
+  const counter = lightbox.querySelector<HTMLElement>('[data-lb-counter]')!
+  const captionEl = lightbox.querySelector<HTMLElement>('[data-lb-caption]')!
+  const dateEl = lightbox.querySelector<HTMLElement>('[data-lb-date]')!
+  const chipsEl = lightbox.querySelector<HTMLElement>('[data-lb-chips]')!
+  const closeBtn = lightbox.querySelector<HTMLButtonElement>('[data-lb-close]')!
+  // Two images take turns: one shows the photo, the other slides in with the
+  // next one, so a swipe can bring the neighbor along with your finger.
+  const slides = Array.from(lightbox.querySelectorAll<HTMLImageElement>('[data-lb-img]'))
+
+  // The viewer sits outside the page, so the page can be made inert beneath it.
+  document.body.append(lightbox)
+  const setPageInert = (inert: boolean) => {
+    for (const el of document.body.children) {
+      if (el !== lightbox && el.tagName !== 'SCRIPT') (el as HTMLElement).inert = inert
+    }
+  }
+
+  // Warm up the backdrop blur so the first open isn't a cold start.
+  requestAnimationFrame(() => {
+    lightbox.dataset.visible = ''
+    frost.style.transition = 'none'
+    frost.style.opacity = '0.001'
+    frost.getBoundingClientRect()
+    requestAnimationFrame(() => {
+      frost.style.opacity = ''
+      if (!isOpen) delete lightbox.dataset.visible
+      requestAnimationFrame(() => (frost.style.transition = ''))
+    })
+  })
+
+  const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+  // Space between two photos as they slide past each other.
+  const GAP = 24
+  const calm = matchMedia('(prefers-reduced-motion: reduce)')
+
+  let index = -1
+  let isOpen = false
+  let cur = slides[0]
+  let spare = slides[1]
+  let returnFocus: HTMLElement | null = null
+
+  const wrap = (i: number) => (i + thumbs.length) % thumbs.length
+  const thumbImg = (i: number) => thumbs[i].querySelector('img')!
+
+  // Every motion runs through here, so anything can be interrupted: settle()
+  // jumps whatever is moving to where it was going. Each motion sets its end
+  // state inline and animates from where it starts, so a finished (or
+  // finished early) animation leaves things where they belong.
+  let running: Animation[] = []
+  function animate(el: HTMLElement, keyframes: PropertyIndexedKeyframes, duration: number) {
+    const a = el.animate(keyframes, { duration, easing: EASE })
+    running.push(a)
+    a.finished.then(
+      () => (running = running.filter((r) => r !== a)),
+      () => {},
+    )
+    return a
+  }
+
+  function settle() {
+    for (const a of running) a.finish()
+    running = []
+  }
+
+  type Rect = { left: number; top: number; width: number; height: number }
+  const placed = new WeakMap<HTMLElement, Rect>()
+
+  // Centered above the info bar, as large as the photo allows.
+  function finalRect(i: number): Rect {
+    const room = innerWidth < 640 ? 176 : 152
+    const vw = innerWidth * 0.92
+    const vh = innerHeight - room
+    const w0 = Number(thumbs[i].dataset.w) || 1080
+    const h0 = Number(thumbs[i].dataset.h) || 810
+    const scale = Math.min(vw / w0, vh / h0, 1.5)
+    const width = w0 * scale
+    const height = h0 * scale
+    return { left: (innerWidth - width) / 2, top: Math.max(16, (innerHeight - room - height) / 2 + 16), width, height }
+  }
+
+  function place(img: HTMLElement, rect: Rect) {
+    placed.set(img, rect)
+    img.style.left = `${rect.left}px`
+    img.style.top = `${rect.top}px`
+    img.style.width = `${rect.width}px`
+    img.style.height = `${rect.height}px`
+  }
+
+  // The transform that lays an image placed at `rect` over `box` (the
+  // thumbnail), scaling about the center.
+  function flip(box: DOMRect, rect: Rect) {
+    const dx = box.left + box.width / 2 - (rect.left + rect.width / 2)
+    const dy = box.top + box.height / 2 - (rect.top + rect.height / 2)
+    return `translate(${dx}px, ${dy}px) scale(${box.width / rect.width}, ${box.height / rect.height})`
+  }
+
+  // Large copies, downloaded and decoded once, so showing one again is instant.
+  const ready = new Set<string>()
+  const fetching = new Map<string, Promise<boolean>>()
+  function warm(i: number) {
+    const full = thumbs[i].dataset.full ?? ''
+    let done = fetching.get(full)
+    if (!done) {
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = full
+      done = img.decode().then(
+        () => (ready.add(full), true),
+        () => false,
+      )
+      fetching.set(full, done)
+    }
+    return done
+  }
+
+  // Put photo i into an image: the large copy if it's ready, else the
+  // thumbnail the browser already has, sharpened once the large copy arrives.
+  function load(img: HTMLImageElement, i: number) {
+    const t = thumbs[i]
+    const full = t.dataset.full ?? ''
+    const small = thumbImg(i)
+    const src = ready.has(full) ? full : small.complete && small.currentSrc ? small.currentSrc : full
+    img.dataset.index = String(i)
+    if (img.getAttribute('src') !== src) img.src = src
+    img.alt = t.dataset.caption ?? ''
+    place(img, finalRect(i))
+    if (src !== full) {
+      warm(i).then((ok) => {
+        if (ok && img.dataset.index === String(i)) img.src = full
+      })
+    }
+  }
+
+  // The backdrop takes on a faint wash of the photo's own color. Its hue
+  // eases the short way round the wheel from one photo to the next.
+  let hue: number | undefined
+  function tint(i: number) {
+    const [h = 0, c = 0] = (thumbs[i].dataset.tint ?? '').split(' ').map(Number)
+    if (hue === undefined) hue = h
+    else hue += ((((h - hue) % 360) + 540) % 360) - 180
+    frost.style.setProperty('--tint-h', String(hue))
+    // Muted photos stay neutral; colorful ones never get louder than a hint.
+    frost.style.setProperty('--tint-c', String(Math.min(c * 0.7, 0.04)))
+  }
+
+  function describe(i: number) {
+    const t = thumbs[i]
+    tint(i)
+    counter.textContent = `${i + 1} / ${thumbs.length}`
+    captionEl.textContent = t.dataset.caption ?? ''
+    dateEl.textContent = [t.dataset.date, t.dataset.place].filter(Boolean).join(' · ')
+    chipsEl.textContent = t.dataset.chips ? t.dataset.chips.split('|').join(', ') : ''
+  }
+
+  function warmNeighbors() {
+    if (thumbs.length < 2) return
+    warm(wrap(index + 1))
+    warm(wrap(index - 1))
+  }
+
+  function open(i: number) {
+    if (isOpen) return
+    settle()
+    isOpen = true
+    index = i
+    returnFocus = thumbs[i]
+    const box = thumbImg(i).getBoundingClientRect()
+    thumbs.forEach((t, j) => t.classList.toggle('is-active', j === i))
+
+    spare.hidden = true
+    load(cur, i)
+    describe(i)
+    cur.hidden = false
+    cur.style.transform = ''
+    cur.style.opacity = ''
+    cur.style.borderRadius = ''
+
+    lightbox.dataset.visible = ''
+    lightbox.dataset.open = ''
+    lightbox.inert = false
+    setPageInert(true)
+    document.body.style.overflow = 'hidden'
+    bar.dataset.shown = ''
+    closeBtn.dataset.shown = ''
+    closeBtn.focus({ preventScroll: true })
+
+    // Grow out of the thumbnail (FLIP), rounding its corners as a thumbnail's.
+    const rect = placed.get(cur)!
+    if (calm.matches) animate(cur, { opacity: [0, 1] }, 200)
+    else {
+      const radius = `${3 / (box.width / rect.width)}px`
+      animate(cur, { transform: [flip(box, rect), 'none'], borderRadius: [radius, '6px'] }, 500)
+    }
+    warmNeighbors()
+  }
+
+  function close() {
+    if (!isOpen) return
+    settle()
+    isOpen = false
+
+    // Hand the page back right away, not after the morph.
+    delete lightbox.dataset.open
+    lightbox.inert = true
+    setPageInert(false)
+    document.body.style.overflow = ''
+    delete bar.dataset.shown
+    delete closeBtn.dataset.shown
+    frost.style.transition = ''
+    frost.style.opacity = ''
+
+    // Browsing may have moved on to a photo that's scrolled out of view.
+    const i = index
+    const thumb = thumbs[i]
+    const on = thumb.getBoundingClientRect()
+    if (on.bottom < 0 || on.top > innerHeight) thumb.scrollIntoView({ block: 'center', behavior: 'instant' })
+    else {
+      // Or, in a strip that scrolls sideways, one scrolled out of it.
+      const strip = thumb.parentElement
+      const s = strip?.getBoundingClientRect()
+      if (strip && s && strip.scrollWidth > strip.clientWidth && (on.left < s.left || on.right > s.right)) {
+        strip.scrollLeft += on.left < s.left ? on.left - s.left - 12 : on.right - s.right + 12
+      }
+    }
+    returnFocus?.focus({ preventScroll: true })
+
+    // Shrink back into the thumbnail, from wherever a drag left it.
+    const img = cur
+    const box = thumbImg(i).getBoundingClientRect()
+    const rect = placed.get(img)!
+    const from = img.style.transform || 'none'
+    let motion: Animation
+    if (calm.matches) {
+      img.style.opacity = '0'
+      motion = animate(img, { opacity: [1, 0] }, 200)
+    } else {
+      const to = flip(box, rect)
+      const radius = `${3 / (box.width / rect.width)}px`
+      img.style.transform = to
+      img.style.borderRadius = radius
+      motion = animate(img, { transform: [from, to], borderRadius: ['6px', radius] }, 500)
+    }
+    motion.finished.then(() => {
+      if (isOpen) return
+      thumb.classList.remove('is-active')
+      delete lightbox.dataset.visible
+      img.hidden = true
+      img.style.transform = ''
+      img.style.opacity = ''
+      img.style.borderRadius = ''
+    })
+  }
+
+  // Hide the image that just slid away, unless it's back in use by then.
+  function retire(img: HTMLImageElement, motion: Animation) {
+    motion.finished.then(() => {
+      if (img === cur || (drag?.axis === 'x' && img === spare)) return
+      img.hidden = true
+      img.style.transform = ''
+      img.style.opacity = ''
+    })
+  }
+
+  // Slide to the next photo (dir 1) or the previous one (-1). A swipe passes
+  // `offset`, how far the finger has already carried the photo.
+  function go(dir: number, offset = 0) {
+    if (!isOpen || thumbs.length < 2) return
+    settle()
+    const next = wrap(index + dir)
+    const out = cur
+    const inn = spare
+    load(inn, next)
+    inn.hidden = false
+    thumbs[index].classList.remove('is-active')
+    thumbs[next].classList.add('is-active')
+    index = next
+    cur = inn
+    spare = out
+    returnFocus = thumbs[next]
+    describe(next)
+
+    if (calm.matches) {
+      out.style.transform = ''
+      inn.style.transform = ''
+      out.style.opacity = '0'
+      inn.style.opacity = ''
+      retire(out, animate(out, { opacity: [1, 0] }, 200))
+      animate(inn, { opacity: [0, 1] }, 200)
+    } else {
+      const span = innerWidth + GAP
+      const left = 1 - Math.min(Math.abs(offset) / span, 1)
+      const duration = Math.max(240, 460 * left)
+      out.style.transform = `translateX(${-dir * span}px)`
+      inn.style.transform = ''
+      inn.style.opacity = ''
+      retire(out, animate(out, { transform: [`translateX(${offset}px)`, out.style.transform] }, duration))
+      animate(inn, { transform: [`translateX(${offset + dir * span}px)`, 'translateX(0)'] }, duration)
+    }
+    warmNeighbors()
+  }
+
+  // Swipe sideways for the next or previous photo, or up or down to close.
+  // The first 10px decide which; after that the photo follows the finger.
+  type Sample = { t: number; x: number; y: number }
+  type Drag = { id: number; x: number; y: number; dx: number; dy: number; axis: '' | 'x' | 'y'; trail: Sample[] }
+  let drag: Drag | null = null
+  let dragged = false
+
+  function slideTo(dx: number) {
+    // With one photo there's nothing to bring in, so it only gives a little.
+    if (thumbs.length < 2) {
+      cur.style.transform = `translateX(${dx / 4}px)`
+      return
+    }
+    const dir = dx < 0 ? 1 : -1
+    const j = wrap(index + dir)
+    if (spare.hidden || spare.dataset.index !== String(j)) {
+      load(spare, j)
+      spare.hidden = false
+    }
+    cur.style.transform = `translateX(${dx}px)`
+    spare.style.transform = `translateX(${dx + dir * (innerWidth + GAP)}px)`
+  }
+
+  function pull(dy: number) {
+    const p = Math.min(Math.abs(dy) / 300, 1)
+    cur.style.transform = `translateY(${dy}px) scale(${1 - p * 0.15})`
+    frost.style.opacity = String(1 - p * 0.6)
+  }
+
+  lightbox.addEventListener('pointerdown', (e) => {
+    dragged = false
+    if (!isOpen || drag || !e.isPrimary || e.button !== 0) return
+    if ((e.target as Element).closest('button')) return
+    const at = { t: e.timeStamp, x: e.clientX, y: e.clientY }
+    drag = { id: e.pointerId, x: at.x, y: at.y, dx: 0, dy: 0, axis: '', trail: [at] }
+  })
+
+  lightbox.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return
+    if (!drag.axis) {
+      const dx = e.clientX - drag.x
+      const dy = e.clientY - drag.y
+      if (Math.hypot(dx, dy) < 10) return
+      drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      // Count from here, so the photo doesn't jump by those first 10px.
+      drag.x = e.clientX
+      drag.y = e.clientY
+      settle()
+      lightbox.setPointerCapture(e.pointerId)
+      lightbox.dataset.dragging = ''
+      if (drag.axis === 'y') frost.style.transition = 'none'
+    }
+    drag.dx = e.clientX - drag.x
+    drag.dy = e.clientY - drag.y
+    drag.trail.push({ t: e.timeStamp, x: e.clientX, y: e.clientY })
+    while (drag.trail.length > 2 && e.timeStamp - drag.trail[0].t > 100) drag.trail.shift()
+    if (drag.axis === 'x') slideTo(drag.dx)
+    else pull(drag.dy)
+  })
+
+  function release(e: PointerEvent, cancelled: boolean) {
+    if (!drag || e.pointerId !== drag.id) return
+    const d = drag
+    drag = null
+    delete lightbox.dataset.dragging
+    if (!d.axis || !isOpen) return
+    dragged = true
+
+    // How fast it was moving over the last tenth of a second, in px/ms.
+    const first = d.trail[0]
+    const dt = Math.max(1, e.timeStamp - first.t)
+    const vx = (e.clientX - first.x) / dt
+    const vy = (e.clientY - first.y) / dt
+
+    if (d.axis === 'x') {
+      const dir = d.dx < 0 ? 1 : -1
+      const flung = Math.abs(vx) > 0.3 && Math.sign(vx) === -dir
+      if (!cancelled && thumbs.length > 1 && (Math.abs(d.dx) > innerWidth * 0.25 || flung)) return go(dir, d.dx)
+      // Not far enough: both photos settle back.
+      const from = cur.style.transform || 'none'
+      cur.style.transform = ''
+      animate(cur, { transform: [from, 'translateX(0)'] }, 320)
+      if (!spare.hidden) {
+        const peek = spare.style.transform || 'none'
+        spare.style.transform = `translateX(${dir * (innerWidth + GAP)}px)`
+        retire(spare, animate(spare, { transform: [peek, spare.style.transform] }, 320))
+      }
+    } else {
+      const flung = Math.abs(vy) > 0.5 && Math.sign(vy) === Math.sign(d.dy)
+      if (!cancelled && (Math.abs(d.dy) > 120 || flung)) return close()
+      // Not far enough: settle back.
+      const from = cur.style.transform || 'none'
+      cur.style.transform = ''
+      animate(cur, { transform: [from, 'none'] }, 360)
+      frost.style.transition = ''
+      frost.style.opacity = ''
+    }
+  }
+
+  lightbox.addEventListener('pointerup', (e) => release(e, false))
+  lightbox.addEventListener('pointercancel', (e) => release(e, true))
+  // Only the viewer's own capture counts. A touch starts out captured by the
+  // photo it lands on, and taking that capture over fires (and bubbles) a
+  // lostpointercapture from the photo, which mustn't end the swipe.
+  lightbox.addEventListener('lostpointercapture', (e) => {
+    if (e.target === lightbox) release(e, true)
+  })
+  // A drag that ends where it started would otherwise count as a click (and
+  // one over the backdrop would close the viewer).
+  lightbox.addEventListener(
+    'click',
+    (e) => {
+      if (dragged && e.detail > 0) e.stopPropagation()
+      dragged = false
+    },
+    true,
+  )
+
+  addEventListener('resize', () => {
+    if (!isOpen || drag) return
+    settle()
+    place(cur, finalRect(index))
+  })
+
+  document.addEventListener('click', (e) => {
+    const thumb = (e.target as Element).closest<HTMLElement>('[data-photo]')
+    if (!thumb || isOpen) return
+    const set = thumb.closest('[data-photo-set]') ?? document
+    thumbs = Array.from(set.querySelectorAll<HTMLElement>('[data-photo]')).filter((t) => t.getClientRects().length > 0)
+    open(thumbs.indexOf(thumb))
+  })
+  frost.addEventListener('click', close)
+  closeBtn.addEventListener('click', close)
+  lightbox.querySelector('[data-lb-prev]')!.addEventListener('click', () => go(-1))
+  lightbox.querySelector('[data-lb-next]')!.addEventListener('click', () => go(1))
+
+  document.addEventListener('keydown', (e) => {
+    if (!isOpen || e.metaKey || e.ctrlKey || e.altKey) return
+    if (e.key === 'Escape') close()
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1)
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(-1)
+    else return
+    e.preventDefault()
+  })
+</script>
+
+<style>
+  /* The viewer ------------------------------------------------------------- */
+
+  /* The viewer itself never fades: an ancestor with opacity (or will-change:
+     opacity) would stop the frosted layer from blurring the page. The frost
+     fades on its own instead, and the viewer only switches visibility. */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    visibility: hidden;
+    pointer-events: none;
+    /* Every touch is the viewer's: swipes browse or close, nothing scrolls. */
+    touch-action: none;
+    overscroll-behavior: contain;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .lightbox[data-dragging] {
+    cursor: grabbing;
+  }
+
+  .lightbox[data-visible] {
+    visibility: visible;
+  }
+
+  .lightbox[data-open] {
+    pointer-events: auto;
+  }
+
+  /* Registered, so the photo's color (set from its data-tint) can ease. */
+  @property --tint-h {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  @property --tint-c {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  .frost {
+    --tint-l: 0.975;
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    background: oklch(var(--tint-l) var(--tint-c, 0) var(--tint-h, 0) / 0.78);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    backdrop-filter: blur(28px) saturate(140%);
+    opacity: 0;
+    transition:
+      opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      --tint-h 0.7s ease,
+      --tint-c 0.7s ease;
+  }
+
+  :global(.dark) .frost {
+    --tint-l: 0.215;
+  }
+
+  .lightbox[data-open] .frost {
+    opacity: 1;
+  }
+
+  .lb-img {
+    position: absolute;
+    border-radius: 6px;
+    background: var(--surface-2);
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.06),
+      0 24px 64px rgb(0 0 0 / 0.22);
+    object-fit: cover;
+    -webkit-user-drag: none;
+  }
+
+  .lb-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .lb-close[data-shown] {
+    opacity: 1;
+    transition-delay: 0.3s;
+  }
+
+  .lb-bar {
+    position: absolute;
+    inset: auto 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px 24px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(6px);
+    transition:
+      opacity 0.35s,
+      transform 0.45s var(--ease);
+  }
+
+  .lb-bar[data-shown] {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    transition-delay: 0.3s;
+  }
+
+  .lb-info {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .lb-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    font-size: 20px;
+    font-style: italic;
+  }
+
+  .lb-title .faint {
+    font-size: 16px;
+    font-style: normal;
+  }
+
+  .lb-settings {
+    color: var(--ink-2);
+    font-size: 15.5px;
+  }
+
+  .lb-settings:empty {
+    display: none;
+  }
+
+  .lb-nav {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .lb-count {
+    min-width: 64px;
+    color: var(--ink-2);
+    font-size: 16px;
+    text-align: center;
+  }
+
+  @media (max-width: 639px) {
+    .lb-bar {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 16px;
+    }
+
+    .lb-nav {
+      justify-content: space-between;
+    }
+  }
+</style>

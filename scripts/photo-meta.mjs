@@ -32,10 +32,11 @@ function shutter(seconds) {
   return `1/${Math.round(1 / seconds)}s`
 }
 
-// EXIF dates carry no time zone; keep the calendar date the camera wrote.
+// EXIF dates carry no time zone; keep the calendar date the camera wrote, as
+// "Feb 16, 2023" and as 2023-02-16 (for sorting).
 function day(raw) {
   const m = typeof raw === 'string' && raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
-  return m ? `${MONTHS[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}` : undefined
+  return m ? { date: `${MONTHS[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`, taken: `${m[1]}-${m[2]}-${m[3]}` } : {}
 }
 
 // A photo's overall hue and how colorful it is, in OKLCH, from its average
@@ -80,7 +81,7 @@ async function read() {
             aperture: x.FNumber ? `f/${Number(x.FNumber.toFixed(1))}` : undefined,
             shutter: shutter(x.ExposureTime),
             iso: x.ISO ? `ISO ${x.ISO}` : undefined,
-            date: day(x.DateTimeOriginal),
+            ...day(x.DateTimeOriginal),
             // An exposure of a second or more: the night sky.
             night: x.ExposureTime >= 1 || undefined,
             tint: await tint(buffer),

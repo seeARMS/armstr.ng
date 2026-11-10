@@ -208,16 +208,20 @@ export function blogPosting(post: {
  * "Licensable" details. They're all rights reserved: `license` points at the
  * note saying so under the grid, and `acquireLicensePage` at the contact page.
  */
-export function imageGallery(photos: { src: string; caption?: string }[]) {
+export function imageGallery(
+  photos: { src: string; caption?: string; place?: string }[],
+  { path = '/photography', name = `Photography by ${person.name}` } = {},
+) {
   return {
     '@type': 'ImageGallery',
-    url: url('/photography'),
-    name: `Photography by ${person.name}`,
+    url: url(path),
+    name,
     author: personRef(),
     image: photos.map((p) => ({
       '@type': 'ImageObject',
       contentUrl: url(p.src),
       caption: p.caption,
+      contentLocation: p.place ? { '@type': 'Place', name: p.place } : undefined,
       // Just the name: the gallery's author above says the rest, once.
       creator: { '@type': 'Person', '@id': PERSON_ID, name: person.name },
       creditText: person.name,

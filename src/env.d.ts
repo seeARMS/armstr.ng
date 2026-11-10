@@ -8,6 +8,8 @@ declare module 'virtual:photo-meta' {
     shutter?: string
     iso?: string
     date?: string
+    /** The same date as YYYY-MM-DD, for sorting. */
+    taken?: string
     /** The photo's average color in OKLCH: hue in degrees, and chroma. */
     tint?: { hue: number; chroma: number }
     /** An exposure of a second or more: the night sky. */

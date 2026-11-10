@@ -60,7 +60,8 @@ export const GET: APIRoute = async () => {
     [
       '## Optional',
       [
-        `- ${link('Photography', md('/photography'))}: wildlife, landscape and astrophotography, with camera settings`,
+        `- ${link('Photography', md('/photography'))}: wildlife, landscape and astrophotography, with camera settings and where each was taken`,
+        `- ${link('Photography map', md('/photography/map'))}: every place the photos were taken, with their photos`,
         `- ${link('RSS feed', abs('/feed.xml'))}: new posts`,
       ].join('\n'),
     ].join('\n\n'),

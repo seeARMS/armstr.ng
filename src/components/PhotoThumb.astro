@@ -1,0 +1,69 @@
+---
+// One photo as a button that opens it in the viewer (Lightbox.astro), which
+// reads what to show from these data attributes.
+import { Image } from 'astro:assets'
+import type { Photo } from '@/lib/photos'
+
+interface Props {
+  photo: Photo
+  widths: number[]
+  sizes: string
+}
+
+const { photo: p, widths, sizes } = Astro.props
+---
+
+<button
+  class="thumb"
+  type="button"
+  data-photo
+  data-full={p.full}
+  data-w={p.image.width}
+  data-h={p.image.height}
+  data-caption={p.caption ?? ''}
+  data-date={p.date ?? ''}
+  data-place={p.place?.label ?? ''}
+  data-chips={p.chips.join('|')}
+  data-tint={p.tint ? `${p.tint.hue} ${p.tint.chroma}` : undefined}
+  data-night={p.night ? '' : undefined}
+  aria-label={p.caption ? `Open photo: ${p.caption}` : p.date ? `Open photo from ${p.date}` : 'Open photo'}
+>
+  <Image
+    src={p.image}
+    alt={p.caption ?? ''}
+    widths={widths}
+    sizes={sizes}
+    format="webp"
+    quality={80}
+    loading="lazy"
+    decoding="async"
+  />
+</button>
+
+<style>
+  .thumb {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 3px;
+    background: var(--surface-2);
+    cursor: zoom-in;
+  }
+
+  .thumb :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    transition: filter 0.3s;
+  }
+
+  .thumb:hover :global(img) {
+    filter: brightness(1.04);
+  }
+
+  /* While the viewer shows this photo, its own copy stands in for it. */
+  .thumb:global(.is-active) :global(img) {
+    opacity: 0 !important;
+  }
+</style>

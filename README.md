@@ -9,12 +9,13 @@ Astro on Cloudflare Workers. The design is set in [Newsreader](https://fonts.goo
 | What | Where |
 | --- | --- |
 | Bio facts, projects, work history, podcasts & press, social links | `src/data/profile.ts` |
-| Photo captions | `src/data/photos.ts` |
+| Photo captions, collections (wildlife, landscape, astro, abstract) and where each was taken | `src/data/photos.ts` |
+| Photography map (`/photography/map`: a MapLibre globe on OpenFreeMap tiles, with AWS terrain tiles for the 3D) | `src/pages/photography/map.astro` |
 | Photos (camera settings come from their EXIF at build time) | `src/assets/photos/` |
 | Posts | Pulled from the Paragraph API when the site builds (`src/lib/getAllArticles.js`) |
 | Images in posts (resized to WebP, real dimensions, blurred preview) | `src/lib/post-images.ts`, with sizes and previews from `scripts/post-images.mjs` |
 | Design tokens and shared styles | `src/styles/global.css` |
-| Social preview images | `scripts/generate-og.mjs`, run before each build; set in Geist from `scripts/fonts/` |
+| Social preview images | `scripts/generate-og.mjs`, run before each build; set in Geist from `scripts/fonts/`. The Photography pages use photos instead, from `public/photos/` |
 | Share video (og:video, which iMessage plays) | `scripts/generate-og-video.mjs`; needs ffmpeg, so run `npm run og:video` by hand after changing it (the roles it cycles through are at the top of the script) and commit `public/video/home.mp4` |
 | Redirects from old addresses (www.armstr.ng, writing.cma.xyz, blog.colinarms.com, cma.xyz, colinarms.com) | `redirect/index.js`, a separate Worker; old paths on armstr.ng itself are in `public/_redirects` |
 | Markdown versions of pages, and `/llms.txt`, for agents | `src/pages/*.md.ts` and `src/pages/llms.txt.ts`, served by `src/worker.ts` |

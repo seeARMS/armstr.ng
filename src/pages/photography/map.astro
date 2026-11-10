@@ -1,0 +1,665 @@
+---
+// Where each photo was taken, on a globe you can spin and fly into, with the
+// mountains in 3D. A place's pin opens a card of its photos; the list below
+// the globe names every place. Its Markdown version is map.md.ts.
+export const prerender = true
+
+import { getImage } from 'astro:assets'
+import Lightbox from '@/components/Lightbox.astro'
+import PhotoLicense from '@/components/PhotoLicense.astro'
+import PhotoTabs from '@/components/PhotoTabs.astro'
+import PhotoThumb from '@/components/PhotoThumb.astro'
+import { person } from '@/data/profile'
+import Layout from '@/layouts/Layout.astro'
+import { byPlace, getPhotos, tabCounts } from '@/lib/photos'
+import { breadcrumbs, imageGallery } from '@/lib/schema'
+
+const all = await getPhotos()
+const places = byPlace(all)
+const total = places.reduce((n, p) => n + p.photos.length, 0)
+const count = (n: number) => `${n} ${n === 1 ? 'photo' : 'photos'}`
+
+// What the globe needs for each place: where it is, and its cover photo for the pin.
+const pins = await Promise.all(
+  places.map(async (p) => ({
+    slug: p.slug,
+    label: p.label,
+    lat: p.lat,
+    lon: p.lon,
+    count: p.photos.length,
+    src: (await getImage({ src: p.cover.image, width: 128, format: 'webp', quality: 72 })).src,
+  })),
+)
+---
+
+<Layout
+  title="Photography map"
+  description="Where Colin Armstrong's photographs were taken, on a 3D globe: Panama's rainforest, Patagonia, Meteora and Santorini, Yosemite, Big Sur and the Bay Area, Ontario, Maui and more."
+  image="/photos/map.jpg"
+  schema={[
+    imageGallery(
+      places.flatMap((p) => p.photos.map((photo) => ({ src: photo.full, caption: photo.caption, place: p.label }))),
+      { path: '/photography/map', name: `Where ${person.name}'s photographs were taken` },
+    ),
+    breadcrumbs([
+      { name: 'Photography', path: '/photography' },
+      { name: 'Map', path: '/photography/map' },
+    ]),
+  ]}
+>
+  <div class="container wide">
+    <header class="page-head">
+      <h1>Photography</h1>
+      <!-- map.md.ts repeats this; change both. -->
+      <p class="summary">
+        Where each photo was taken. My camera doesn't record location, so most of these come from the photos my phone
+        took around the same time. Pick a place to see its photos.
+      </p>
+    </header>
+
+    <PhotoTabs current="map" counts={tabCounts(all)} />
+
+    <div class="atlas" data-atlas>
+      <div class="globe" data-globe data-pins={JSON.stringify(pins)} role="region" aria-label="Globe of photo locations">
+        <p class="note" data-note hidden></p>
+      </div>
+
+      {
+        places.map((p) => (
+          <section class="card" id={p.slug} data-card={p.slug} aria-labelledby={`${p.slug}-name`}>
+            <div class="card-head">
+              <div>
+                <h2 id={`${p.slug}-name`}>
+                  {p.name}<span class="faint">, {p.region}</span>
+                </h2>
+                <p class="card-meta">
+                  {p.when} · {count(p.photos.length)}
+                </p>
+              </div>
+              <button class="btn square card-close" type="button" aria-label="Back to the globe" data-card-close>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div class="strip" data-photo-set>
+              {p.photos.map((photo) => (
+                <PhotoThumb photo={photo} widths={[240, 480]} sizes="240px" />
+              ))}
+            </div>
+          </section>
+        ))
+      }
+    </div>
+
+    <section class="section" aria-labelledby="places">
+      <div class="section-head">
+        <h2 id="places">Places</h2>
+        <span class="meta">{places.length} places, {count(total)}</span>
+      </div>
+      <ul class="rows">
+        {
+          places.map((p) => (
+            <li>
+              <a class="place" href={`#${p.slug}`} data-place={p.slug}>
+                <span>
+                  <span class="stroke">{p.name}</span><span class="faint">, {p.region}</span>
+                </span>
+                <span class="place-meta">
+                  {p.when} · {count(p.photos.length)}
+                </span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <PhotoLicense />
+  </div>
+
+  <Lightbox />
+</Layout>
+
+<script>
+  import type { GeoJSONSource, Map as MapLibre, MapGeoJSONFeature, Marker } from 'maplibre-gl'
+  import cssUrl from 'maplibre-gl/dist/maplibre-gl.css?url'
+  import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
+
+  type Pin = { slug: string; label: string; lat: number; lon: number; count: number; src: string }
+  type LngLat = [number, number]
+  const point = (f: MapGeoJSONFeature) => (f.geometry as unknown as { coordinates: LngLat }).coordinates
+
+  const atlas = document.querySelector<HTMLElement>('[data-atlas]')!
+  const globe = atlas.querySelector<HTMLElement>('[data-globe]')!
+  const note = globe.querySelector<HTMLElement>('[data-note]')!
+  const pins: Pin[] = JSON.parse(globe.dataset.pins ?? '[]')
+  const bySlug = new Map(pins.map((p) => [p.slug, p]))
+  const cards = new Map(Array.from(atlas.querySelectorAll<HTMLElement>('[data-card]')).map((c) => [c.dataset.card!, c]))
+  const calm = matchMedia('(prefers-reduced-motion: reduce)')
+  const dark = () => document.documentElement.classList.contains('dark')
+
+  // OpenFreeMap's styles (OpenStreetMap data, no key), with Natural Earth's
+  // shaded relief far out and AWS's open terrain tiles for the 3D mountains.
+  const STYLE = { light: 'https://tiles.openfreemap.org/styles/positron', dark: 'https://tiles.openfreemap.org/styles/dark' }
+  const DEM = {
+    type: 'raster-dem' as const,
+    tiles: ['https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png'],
+    encoding: 'terrarium' as const,
+    tileSize: 256,
+    maxzoom: 13,
+    attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain tiles</a>',
+  }
+
+  let map: MapLibre | undefined
+  let selected: string | undefined
+
+  // The whole globe, as large as the frame allows, turned toward the Americas
+  // (where most of the places are).
+  function home() {
+    const r = Math.min(globe.clientWidth, globe.clientHeight) * 0.5
+    return { center: [-62, 18] as [number, number], zoom: Math.log2(r / 81.5), pitch: 0, bearing: 0 }
+  }
+
+  function showCard(slug?: string) {
+    for (const [s, card] of cards) card.toggleAttribute('data-open', s === slug)
+    for (const el of globe.querySelectorAll<HTMLElement>('.pin[data-slug]')) {
+      el.classList.toggle('is-selected', el.dataset.slug === slug)
+    }
+  }
+
+  function select(slug: string, animate = true) {
+    const pin = bySlug.get(slug)
+    if (!pin) return
+    selected = slug
+    spinning = false
+    showCard(slug)
+    history.replaceState(history.state, '', `#${slug}`)
+    const view = { center: [pin.lon, pin.lat] as [number, number], zoom: 10.5, pitch: 58, bearing: -20 }
+    if (!map) return
+    if (animate && !calm.matches) map.flyTo({ ...view, duration: 3600, essential: true })
+    else map.jumpTo(view)
+  }
+
+  function deselect() {
+    if (!selected) return
+    selected = undefined
+    showCard()
+    history.replaceState(history.state, '', location.pathname)
+    if (map) {
+      const view = { ...home(), center: map.getCenter() }
+      if (calm.matches) map.jumpTo(view)
+      else map.flyTo({ ...view, duration: 2400, essential: true })
+    }
+  }
+
+  // Pins are photos; places too close to tell apart at this zoom merge into
+  // one, which opens them up when pressed.
+  function pinElement(pin: Pin) {
+    const el = document.createElement('button')
+    el.type = 'button'
+    el.className = 'pin'
+    el.dataset.slug = pin.slug
+    el.setAttribute('aria-label', `${pin.label}: ${pin.count} ${pin.count === 1 ? 'photo' : 'photos'}`)
+    el.innerHTML = `<img src="${pin.src}" alt="" draggable="false">${pin.count > 1 ? `<span>${pin.count}</span>` : ''}`
+    el.classList.toggle('is-selected', pin.slug === selected)
+    el.addEventListener('click', (e) => {
+      e.stopPropagation()
+      select(pin.slug)
+    })
+    return el
+  }
+
+  function clusterElement(feature: MapGeoJSONFeature) {
+    const id = feature.properties.cluster_id as number
+    const el = document.createElement('button')
+    el.type = 'button'
+    el.className = 'pin cluster'
+    const photos = feature.properties.photos as number
+    el.setAttribute('aria-label', `${feature.properties.point_count} places, ${photos} photos: zoom in`)
+    el.innerHTML = `<img alt="" draggable="false"><span>${photos}</span>`
+    const source = map!.getSource<GeoJSONSource>('places')!
+    // Its cover is the cover of the place with the most photos in it.
+    source.getClusterLeaves(id, 100, 0).then((leaves) => {
+      const best = leaves.map((l) => bySlug.get(l.properties?.slug)).sort((a, b) => (b?.count ?? 0) - (a?.count ?? 0))[0]
+      if (best) el.querySelector('img')!.src = best.src
+    })
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      spinning = false
+      const zoom = await source.getClusterExpansionZoom(id)
+      map!.easeTo({ center: point(feature), zoom: zoom + 0.5, duration: calm.matches ? 0 : 1200 })
+    })
+    return el
+  }
+
+  async function init() {
+    const link = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: cssUrl })
+    document.head.append(link)
+    const maplibre = await import('maplibre-gl')
+    maplibre.setWorkerUrl(workerUrl)
+
+    const start = location.hash.slice(1)
+    map = new maplibre.Map({
+      container: globe,
+      style: dark() ? STYLE.dark : STYLE.light,
+      ...home(),
+      maxPitch: 70,
+      // Scrolling the page past the globe shouldn't zoom it: ⌘/Ctrl + scroll
+      // or two fingers do.
+      cooperativeGestures: true,
+      attributionControl: { compact: true },
+      fadeDuration: 150,
+    })
+    const m = map
+    m.addControl(new maplibre.NavigationControl({ visualizePitch: true }), 'top-right')
+
+    const markers = new Map<string, Marker>()
+    const shown = new Set<string>()
+
+    // The extras ride on whichever basemap is showing, so they're added again
+    // when the theme swaps it, and the pins start afresh.
+    m.on('style.load', () => {
+      for (const marker of markers.values()) marker.remove()
+      markers.clear()
+      shown.clear()
+      m.setProjection({ type: 'globe' })
+      const night = dark()
+      // Land, water and air in the site's own grays (no blue at night).
+      m.setPaintProperty('background', 'background-color', night ? '#2b2b29' : '#f6f6f4')
+      m.setPaintProperty('water', 'fill-color', night ? '#1a1a19' : '#d3d9e1')
+      m.setSky({
+        'sky-color': night ? '#262624' : '#e6ebf2',
+        'horizon-color': night ? '#3a3a37' : '#f6f7f9',
+        'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.9, 5, 0.6, 8, 0],
+      })
+      m.addSource('dem', DEM)
+      m.addSource('hills', DEM)
+      const firstLabel = m.getStyle().layers.find((l) => l.type === 'symbol')?.id
+      m.addLayer(
+        {
+          id: 'hills',
+          type: 'hillshade',
+          source: 'hills',
+          minzoom: 5,
+          paint: {
+            'hillshade-exaggeration': 0.35,
+            'hillshade-shadow-color': night ? '#000000' : '#5c5f69',
+            'hillshade-highlight-color': night ? '#3c3c39' : '#ffffff',
+          },
+        },
+        firstLabel,
+      )
+      m.setTerrain({ source: 'dem', exaggeration: 1.4 })
+      m.addSource('places', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: pins.map((p) => ({
+            type: 'Feature',
+            properties: { slug: p.slug, count: p.count },
+            geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
+          })),
+        },
+        cluster: true,
+        clusterRadius: 40,
+        clusterMaxZoom: 9,
+        clusterProperties: { photos: ['+', ['get', 'count']] },
+      })
+      // Invisible: it's only there so the clusters get worked out.
+      m.addLayer({ id: 'places', type: 'circle', source: 'places', paint: { 'circle-opacity': 0, 'circle-radius': 1 } })
+    })
+
+    // Keep the pins in step with the clusters at the current zoom.
+    m.on('render', () => {
+      if (!m.getSource('places') || !m.isSourceLoaded('places')) return
+      const seen = new Set<string>()
+      for (const f of m.querySourceFeatures('places')) {
+        const key = f.properties.cluster ? `cluster:${f.properties.cluster_id}` : String(f.properties.slug)
+        if (seen.has(key)) continue
+        seen.add(key)
+        let marker = markers.get(key)
+        if (!marker) {
+          const pin = bySlug.get(f.properties.slug)
+          const element = f.properties.cluster ? clusterElement(f) : pin && pinElement(pin)
+          if (!element) continue
+          // Pins on the far side of the globe hide rather than show through it.
+          marker = new maplibre.Marker({ element, opacityWhenCovered: '0' }).setLngLat(point(f))
+          markers.set(key, marker)
+        }
+        if (!shown.has(key)) {
+          marker.addTo(m)
+          shown.add(key)
+        }
+      }
+      for (const key of shown) {
+        if (!seen.has(key)) {
+          markers.get(key)?.remove()
+          shown.delete(key)
+        }
+      }
+    })
+
+    // A slow turn, until someone takes hold of the globe.
+    m.on('load', () => {
+      globe.dataset.ready = ''
+      if (bySlug.has(start)) select(start, false)
+      else spin()
+    })
+    m.on('moveend', spin)
+    for (const type of ['mousedown', 'touchstart', 'wheel'] as const) m.on(type, () => (spinning = false))
+
+    // The basemap follows the site's theme.
+    let night = dark()
+    new MutationObserver(() => {
+      if (dark() === night) return
+      night = dark()
+      m.setStyle(night ? STYLE.dark : STYLE.light, { diff: false })
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+
+    addEventListener('resize', () => {
+      if (!selected && spinning) m.jumpTo({ zoom: home().zoom })
+    })
+  }
+
+  let spinning = !calm.matches
+  function spin() {
+    if (!map || !spinning || selected || document.hidden) return
+    const center = map.getCenter()
+    center.lng -= 2.5
+    map.easeTo({ center, duration: 1000, easing: (t) => t })
+  }
+  document.addEventListener('visibilitychange', spin)
+
+  function fail(error: unknown) {
+    console.error(error)
+    note.textContent = "The globe couldn't load here (it needs WebGL). Every place is listed below."
+    note.hidden = false
+    globe.dataset.failed = ''
+  }
+
+  // Close the card with Escape, unless the photo viewer is the one open.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !selected || document.querySelector('[data-lightbox][data-open]')) return
+    deselect()
+  })
+  for (const button of atlas.querySelectorAll('[data-card-close]')) button.addEventListener('click', deselect)
+
+  // The list below the globe flies it to a place, bringing the globe into view.
+  for (const link of document.querySelectorAll<HTMLAnchorElement>('a[data-place]')) {
+    link.addEventListener('click', (e) => {
+      e.preventDefault()
+      select(link.dataset.place!)
+      const box = atlas.getBoundingClientRect()
+      if (box.top < 0 || box.bottom > innerHeight) {
+        atlas.scrollIntoView({ block: 'center', behavior: calm.matches ? 'instant' : 'smooth' })
+      }
+    })
+  }
+
+  // A prerendered page waits until it's shown: no tiles, WebGL or 1MB of map
+  // code for a page that might never be opened.
+  const go = () => init().catch(fail)
+  if (document.prerendering) document.addEventListener('prerenderingchange', go, { once: true })
+  else go()
+</script>
+
+<style>
+  .atlas {
+    position: relative;
+    margin-top: 40px;
+  }
+
+  /* The globe floats on the page; flown in, the map fills the frame. */
+  .globe {
+    height: clamp(440px, 72vh, 780px);
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--bg);
+  }
+
+  .note {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    padding: 24px;
+    color: var(--ink-2);
+    font-size: 17px;
+    text-align: center;
+  }
+
+  /* Without scripts there's no globe, and every place's card is listed. */
+  @media (scripting: none) {
+    .globe {
+      display: none;
+    }
+  }
+
+  /* The pin is MapLibre's marker element, which it positions absolutely. */
+  .globe :global(.pin) {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--surface-2);
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.08),
+      0 6px 16px rgb(0 0 0 / 0.25);
+    cursor: pointer;
+    transition:
+      width 220ms var(--ease),
+      height 220ms var(--ease),
+      border-color 220ms;
+  }
+
+  .globe :global(.pin.cluster) {
+    width: 54px;
+    height: 54px;
+  }
+
+  .globe :global(.pin:hover),
+  .globe :global(.pin.is-selected) {
+    width: 56px;
+    height: 56px;
+    z-index: 2;
+  }
+
+  .globe :global(.pin.is-selected) {
+    border-color: var(--blue);
+  }
+
+  .globe :global(.pin:focus-visible) {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+  }
+
+  .globe :global(.pin img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .globe :global(.pin span) {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    line-height: 22px;
+    text-align: center;
+  }
+
+  /* MapLibre's own controls, in the site's colors. */
+  .globe :global(.maplibregl-ctrl-group) {
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+
+  .globe :global(.maplibregl-ctrl-group button + button) {
+    border-top-color: var(--line);
+  }
+
+  :global(.dark) .globe :global(.maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
+    filter: invert(1);
+  }
+
+  .globe :global(.maplibregl-ctrl-attrib) {
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    color: var(--ink-2);
+    font-family: inherit;
+    font-size: 12px;
+  }
+
+  .globe :global(.maplibregl-ctrl-attrib a) {
+    color: inherit;
+  }
+
+  .globe :global(.maplibregl-cooperative-gesture-screen) {
+    font-family: inherit;
+    font-size: 19px;
+  }
+
+  /* A place's photos, over the bottom of the globe. */
+  .card {
+    margin-top: 24px;
+  }
+
+  @media (scripting: enabled) {
+    .card {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      z-index: 3;
+      width: min(480px, calc(100% - 32px));
+      margin: 0;
+      padding: 16px 16px 14px;
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      box-shadow:
+        0 0 0 1px var(--line),
+        0 18px 48px rgb(0 0 0 / 0.18);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+    }
+
+    .card:not([data-open]) {
+      display: none;
+    }
+
+    .card[data-open] {
+      animation: rise 420ms var(--ease) both;
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .card h2 {
+    font-size: 21px;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.25;
+  }
+
+  .card h2 .faint {
+    font-style: normal;
+  }
+
+  .card-meta {
+    margin-top: 2px;
+    color: var(--ink-2);
+    font-size: 15.5px;
+  }
+
+  @media (scripting: none) {
+    .card-close {
+      display: none;
+    }
+  }
+
+  .strip {
+    display: flex;
+    gap: 8px;
+    margin: 12px -16px 0;
+    padding: 0 16px 2px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+  }
+
+  .strip :global(.thumb) {
+    flex: none;
+    height: 112px;
+  }
+
+  .strip :global(.thumb img) {
+    width: auto;
+    height: 100%;
+  }
+
+  .place {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 0;
+    font-size: 19px;
+  }
+
+  .place-meta {
+    flex: none;
+    color: var(--ink-2);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 639px) {
+    .atlas {
+      margin-top: 28px;
+      margin-inline: calc(var(--gutter) * -1);
+    }
+
+    .globe {
+      height: 68vh;
+      border-radius: 0;
+    }
+
+    @media (scripting: enabled) {
+      .card {
+        bottom: 12px;
+        left: 12px;
+        width: calc(100% - 24px);
+      }
+    }
+
+    .strip :global(.thumb) {
+      height: 96px;
+    }
+
+    .place {
+      font-size: 18px;
+    }
+  }
+</style>

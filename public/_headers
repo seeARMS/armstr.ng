@@ -18,6 +18,9 @@
 /photography
   Cache-Control: public, max-age=300
 
+/photography/*
+  Cache-Control: public, max-age=300
+
 /contact
   Cache-Control: public, max-age=300
 

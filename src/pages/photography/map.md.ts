@@ -15,7 +15,7 @@ export const GET: APIRoute = async () => {
     frontMatter({
       title: `Photography map – ${person.name}`,
       description:
-        "Where Colin Armstrong's photographs were taken, on a 3D globe: Panama's rainforest, Patagonia, Meteora and Santorini, Yosemite, Big Sur and the Bay Area, Ontario, Maui and more.",
+        "Where Colin Armstrong's photographs were taken, on a map: Panama's rainforest, Patagonia, Meteora and Santorini, Yosemite, Big Sur and the Bay Area, Ontario, Maui and more.",
       url: abs('/photography/map'),
     }),
     '# Where the photos were taken',

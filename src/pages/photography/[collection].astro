@@ -5,12 +5,12 @@ export const prerender = true
 
 import Lightbox from '@/components/Lightbox.astro'
 import PhotoGrid from '@/components/PhotoGrid.astro'
+import PhotoHead from '@/components/PhotoHead.astro'
 import PhotoLicense from '@/components/PhotoLicense.astro'
-import PhotoTabs from '@/components/PhotoTabs.astro'
 import { collections, type Collection } from '@/data/photos'
 import { person } from '@/data/profile'
 import Layout from '@/layouts/Layout.astro'
-import { collectionKeys, getPhotos, tabCounts } from '@/lib/photos'
+import { collectionKeys, getPhotos, mainCamera } from '@/lib/photos'
 import { breadcrumbs, imageGallery } from '@/lib/schema'
 
 export function getStaticPaths() {
@@ -40,12 +40,7 @@ const photos = all.filter((p) => p.collection === key)
   ]}
 >
   <div class="container wide">
-    <header class="page-head">
-      <h1>Photography</h1>
-      <p class="summary">{collection.summary}</p>
-    </header>
-
-    <PhotoTabs current={key} counts={tabCounts(all)} />
+    <PhotoHead current={key} camera={mainCamera(all)}>{collection.summary}</PhotoHead>
     <PhotoGrid photos={photos} />
     <PhotoLicense />
   </div>

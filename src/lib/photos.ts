@@ -39,6 +39,7 @@ export async function getPhotos() {
           image,
           full: full.src,
           caption: about?.caption,
+          note: about?.note,
           collection: about?.collection,
           place: about ? place(about.place) : undefined,
           date: m.date,
@@ -53,10 +54,10 @@ export async function getPhotos() {
 
 export type Photo = Awaited<ReturnType<typeof getPhotos>>[number]
 
-/** The collections, in tab order. */
+/** The collections, in the order the Photography page's sentence names them. */
 export const collectionKeys = Object.keys(collections) as Collection[]
 
-/** How many photos each Photography tab shows. */
+/** How many photos there are in all, and in each collection. */
 export function tabCounts(photos: Photo[]) {
   const counts: Record<string, number> = { all: photos.length }
   for (const p of photos) if (p.collection) counts[p.collection] = (counts[p.collection] ?? 0) + 1

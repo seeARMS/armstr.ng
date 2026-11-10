@@ -11,6 +11,8 @@ interface Props {
 }
 
 const { photo: p, widths, sizes } = Astro.props
+// Until it arrives, the photo's place is a wash of its own color.
+const wash = p.tint ? `--th: ${p.tint.hue}; --tc: ${p.tint.chroma}` : undefined
 ---
 
 <button
@@ -26,6 +28,7 @@ const { photo: p, widths, sizes } = Astro.props
   data-chips={p.chips.join('|')}
   data-tint={p.tint ? `${p.tint.hue} ${p.tint.chroma}` : undefined}
   data-night={p.night ? '' : undefined}
+  style={wash}
   aria-label={p.caption ? `Open photo: ${p.caption}` : p.date ? `Open photo from ${p.date}` : 'Open photo'}
 >
   <Image
@@ -42,13 +45,20 @@ const { photo: p, widths, sizes } = Astro.props
 
 <style>
   .thumb {
+    --tl: 0.925;
     display: block;
     padding: 0;
     overflow: hidden;
     border: 0;
     border-radius: 3px;
-    background: var(--surface-2);
+    /* The photo's average color, quieter: a gray for muted shots, a hint of
+       green for the rainforest, of violet for the Milky Way. */
+    background: oklch(var(--tl) min(calc(var(--tc, 0) * 0.55), 0.045) var(--th, 0));
     cursor: zoom-in;
+  }
+
+  :global(.dark) .thumb {
+    --tl: 0.265;
   }
 
   .thumb :global(img) {
@@ -60,6 +70,14 @@ const { photo: p, widths, sizes } = Astro.props
 
   .thumb:hover :global(img) {
     filter: brightness(1.04);
+  }
+
+  /* A photo stays hidden until it has loaded (PhotoDevelop.astro develops
+     the ones that arrive late). Without a script they simply appear. */
+  @media (scripting: enabled) {
+    .thumb :global(img:not([data-loaded])) {
+      opacity: 0;
+    }
   }
 
   /* While the viewer shows this photo, its own copy stands in for it. */

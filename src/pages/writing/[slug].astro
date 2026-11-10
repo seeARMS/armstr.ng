@@ -464,36 +464,8 @@ const schema = [
     padding-inline: var(--gutter);
   }
 
-  /* The back link sits in the space above the title, so the title starts
-     where the Writing page's heading does (.page-head's padding, less the
-     link's 24px line and its 20px gap); clicking into a post keeps the
-     titles in the same place. */
-  .page-head {
-    padding-top: 52px;
-  }
-
-  .back {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 20px;
-    color: var(--ink-2);
-    font-size: 16px;
-  }
-
-  .back svg {
-    width: 15px;
-    height: 15px;
-    transition: transform 220ms var(--ease);
-  }
-
-  .back:hover {
-    color: var(--blue);
-  }
-
-  .back:hover svg {
-    transform: translateX(-3px);
-  }
+  /* The back link (.back in global.css) sits above the title, so clicking
+     into a post keeps the titles in the same place. */
 
   /* The title at display size, set tight, with the subtitle as an italic
      standfirst under it. */
@@ -586,15 +558,6 @@ const schema = [
   }
 
   @media (max-width: 639px) {
-    /* The same sum with the phone's 76px padding, and a tighter gap. */
-    .page-head {
-      padding-top: 40px;
-    }
-
-    .back {
-      margin-bottom: 12px;
-    }
-
     .page-head h1 {
       font-size: 42px;
     }

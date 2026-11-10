@@ -4,7 +4,7 @@
 import type { APIRoute } from 'astro'
 import { person } from '@/data/profile'
 import { abs, frontMatter, link, markdown } from '@/lib/markdown'
-import { byPlace, getPhotos, photoMarkdown } from '@/lib/photos'
+import { byPlace, getPhotos, licenseMarkdown, photoMarkdown } from '@/lib/photos'
 
 export const prerender = true
 
@@ -27,6 +27,6 @@ export const GET: APIRoute = async () => {
         place.photos.map((photo) => photoMarkdown(photo, abs)).join('\n'),
       ].join('\n\n'),
     ),
-    `All photos © ${person.name}, all rights reserved. To use one, email ${link(person.email, `mailto:${person.email}`)}.`,
+    licenseMarkdown(),
   )
 }

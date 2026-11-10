@@ -4,7 +4,9 @@
 // lightbox. The pages and their Markdown versions all read this.
 import { getImage } from 'astro:assets'
 import meta from 'virtual:photo-meta'
-import { collections, nightSky, photos as info, places, type Collection, type PlaceSlug } from '@/data/photos'
+import { collections, license, nightSky, photos as info, places, type Collection, type PlaceSlug } from '@/data/photos'
+import { person } from '@/data/profile'
+import { abs, link } from '@/lib/markdown'
 
 const modules = import.meta.glob<{ default: ImageMetadata }>('/src/assets/photos/*.{jpg,jpeg,png,webp}', {
   eager: true,
@@ -97,4 +99,9 @@ export function mainCamera(photos: { chips: string[] }[]): string | undefined {
 export function photoMarkdown(photo: Photo, abs: (path: string) => string) {
   const about = [photo.caption, photo.date, photo.place?.label, photo.chips.join(', ')].filter(Boolean).join(' · ')
   return `- ![${photo.caption ?? ''}](${abs(photo.full)})${about ? `\n  ${about}` : ''}`
+}
+
+/** The note that ends each photo page's Markdown, as PhotoLicense.astro says it. */
+export function licenseMarkdown() {
+  return `All photos © ${person.name}, free to share with credit for non-commercial use (${link(license.name, license.url)}). See ${link('how to use or license them', abs(`${license.page}.md`))}.`
 }

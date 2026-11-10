@@ -2,6 +2,7 @@
 // Colin, this site and Paragraph are defined once and referred to by @id, so
 // search engines can tie the site, the posts, the press and Paragraph to the
 // same person. Layout.astro renders whatever a page passes as `schema`.
+import { license } from '@/data/photos'
 import { appearances, paragraph, person, projects, socials } from '@/data/profile'
 
 export const SITE = 'https://armstr.ng'
@@ -205,8 +206,9 @@ export function blogPosting(post: {
 
 /**
  * Photos credited to Colin, for Google Images' creator, credit and
- * "Licensable" details. They're all rights reserved: `license` points at the
- * note saying so under the grid, and `acquireLicensePage` at the contact page.
+ * "Licensable" details. They're CC BY-NC 4.0: `license` is the license itself,
+ * and `acquireLicensePage` the page explaining it and how to license one for
+ * commercial use (src/pages/photography/license.astro).
  */
 export function imageGallery(
   photos: { src: string; caption?: string; place?: string }[],
@@ -226,8 +228,8 @@ export function imageGallery(
       creator: { '@type': 'Person', '@id': PERSON_ID, name: person.name },
       creditText: person.name,
       copyrightNotice: `© ${person.name}`,
-      license: url('/photography#license'),
-      acquireLicensePage: url('/contact'),
+      license: license.url,
+      acquireLicensePage: url(license.page),
     })),
   }
 }

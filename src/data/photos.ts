@@ -138,3 +138,16 @@ export const photos: Record<string, { caption: string; collection: Collection; p
 // already (scripts/photo-meta.mjs). The Photography page opens on one of
 // these after dark.
 export const nightSky = new Set(['4V3A7317-Enhanced-NR', '4V3A0065-HDR', '4V3A0104-HDR'])
+
+/**
+ * The photos' license, explained on /photography/license. The note under
+ * every photo page (PhotoLicense.astro), their Markdown versions and their
+ * structured data (imageGallery in src/lib/schema.ts) all name it.
+ */
+export const license = {
+  name: 'CC BY-NC 4.0',
+  title: 'Creative Commons Attribution-NonCommercial 4.0 International',
+  url: 'https://creativecommons.org/licenses/by-nc/4.0/',
+  page: '/photography/license',
+  credit: 'Photo by Colin Armstrong (armstr.ng), CC BY-NC 4.0',
+}

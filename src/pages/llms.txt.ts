@@ -2,6 +2,7 @@
 // Markdown version of each page is, for agents. Keep the facts in step with
 // src/data/profile.ts.
 import type { APIRoute } from 'astro'
+import { license } from '@/data/photos'
 import { paragraph, person, projects, socials, work } from '@/data/profile'
 import { mediumDate, monthYear, tenure } from '@/lib/format'
 import { getColinArticles } from '@/lib/getAllArticles'
@@ -62,6 +63,7 @@ export const GET: APIRoute = async () => {
       [
         `- ${link('Photography', md('/photography'))}: wildlife, landscape and astrophotography, with camera settings and where each was taken`,
         `- ${link('Photography map', md('/photography/map'))}: every place the photos were taken, with their photos`,
+        `- ${link('Photo licensing', md(license.page))}: the photos are ${license.name}, free to share with credit for non-commercial use; how to credit them, and how to license one commercially`,
         `- ${link('RSS feed', abs('/feed.xml'))}: new posts`,
       ].join('\n'),
     ].join('\n\n'),

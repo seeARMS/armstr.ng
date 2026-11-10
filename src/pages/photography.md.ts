@@ -3,9 +3,8 @@
 // photography.astro's; change both.
 import type { APIRoute } from 'astro'
 import { collections } from '@/data/photos'
-import { person } from '@/data/profile'
 import { abs, frontMatter, link, markdown } from '@/lib/markdown'
-import { collectionKeys, getPhotos, mainCamera, photoMarkdown, tabCounts } from '@/lib/photos'
+import { collectionKeys, getPhotos, licenseMarkdown, mainCamera, photoMarkdown, tabCounts } from '@/lib/photos'
 
 export const prerender = true
 
@@ -25,6 +24,6 @@ export const GET: APIRoute = async () => {
     `Wildlife, landscape, and astrophotography${camera ? `, mostly on a ${camera}` : ''}. Each photo below is followed by what it shows, and when, where and how it was taken.`,
     `By collection: ${collectionKeys.map((key) => `${link(collections[key].name, abs(`/photography/${key}.md`))} (${counts[key] ?? 0})`).join(', ')}. The ${link('map', abs('/photography/map.md'))} lists every place.`,
     photos.map((photo) => photoMarkdown(photo, abs)).join('\n'),
-    `All photos © ${person.name}, all rights reserved. To use one, email ${link(person.email, `mailto:${person.email}`)}.`,
+    licenseMarkdown(),
   )
 }

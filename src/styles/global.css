@@ -331,6 +331,36 @@ a:hover .stroke {
   text-wrap: pretty;
 }
 
+/* A link back up a level (a post's "← Writing"), in the space above the
+   title, so the title starts where the page above's heading does
+   (.page-head's padding, less the link's 24px line and its 20px gap). */
+.page-head:has(> .back) {
+  padding-top: 52px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  color: var(--ink-2);
+  font-size: 16px;
+}
+
+.back svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 220ms var(--ease);
+}
+
+.back:hover {
+  color: var(--blue);
+}
+
+.back:hover svg {
+  transform: translateX(-3px);
+}
+
 .section {
   margin-top: 88px;
 }
@@ -757,6 +787,15 @@ a:hover .stroke {
 
   .page-head {
     padding-top: 76px;
+  }
+
+  /* The same sum with the phone's 76px padding, and a tighter gap. */
+  .page-head:has(> .back) {
+    padding-top: 40px;
+  }
+
+  .back {
+    margin-bottom: 12px;
   }
 
   .page-head h1 {

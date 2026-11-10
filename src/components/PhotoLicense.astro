@@ -1,12 +1,16 @@
 ---
-// Each photo's structured data (imageGallery in src/lib/schema.ts) names
-// this note, on /photography, as its license.
+// The note under every photo page, linking to Photo licensing. The pages'
+// Markdown versions end with the same note (licenseMarkdown in src/lib/photos.ts).
+import { license } from '@/data/photos'
 import { person } from '@/data/profile'
 ---
 
 <p class="license" id="license">
-  All photos © {person.name}, all rights reserved. To use one, email
-  <a class="link" href={`mailto:${person.email}`}>{person.email}</a>.
+  All photos © {person.name}, free to share with credit for non-commercial use (<a
+    class="link name"
+    href={license.url}
+    rel="license">{license.name}</a
+  >). See <a class="link" href={license.page}>how to use or license them</a>.
 </p>
 
 <style>
@@ -14,5 +18,10 @@ import { person } from '@/data/profile'
     margin-top: 28px;
     color: var(--ink-3);
     font-size: 16px;
+  }
+
+  /* "CC BY-NC 4.0" reads as one name, so it never breaks at its hyphen. */
+  .name {
+    white-space: nowrap;
   }
 </style>

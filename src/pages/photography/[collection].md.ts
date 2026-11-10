@@ -4,7 +4,7 @@ import type { APIRoute, GetStaticPaths } from 'astro'
 import { collections, type Collection } from '@/data/photos'
 import { person } from '@/data/profile'
 import { abs, frontMatter, link, markdown } from '@/lib/markdown'
-import { collectionKeys, getPhotos, photoMarkdown } from '@/lib/photos'
+import { collectionKeys, getPhotos, licenseMarkdown, photoMarkdown } from '@/lib/photos'
 
 export const prerender = true
 
@@ -25,6 +25,6 @@ export const GET: APIRoute = async ({ params }) => {
     `# ${collection.title}`,
     `${collection.summary} Part of ${link(`${person.name}'s photography`, abs('/photography.md'))}; each photo below is followed by what it shows, and when, where and how it was taken.`,
     photos.map((photo) => photoMarkdown(photo, abs)).join('\n'),
-    `All photos © ${person.name}, all rights reserved. To use one, email ${link(person.email, `mailto:${person.email}`)}.`,
+    licenseMarkdown(),
   )
 }

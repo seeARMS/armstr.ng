@@ -1,0 +1,157 @@
+---
+// How the photos may be used: free to share with credit under CC BY-NC 4.0,
+// and licensed separately for anything commercial. The note under every photo
+// page (PhotoLicense.astro) links here, and each photo's structured data names
+// it as the place to license one.
+export const prerender = true
+
+import CopyButton from '@/components/CopyButton.astro'
+import { license } from '@/data/photos'
+import { person, socials } from '@/data/profile'
+import Layout from '@/layouts/Layout.astro'
+import { breadcrumbs } from '@/lib/schema'
+
+// The Markdown version of this page (license.md.ts) repeats its copy; change both.
+const x = socials.find((s) => s.name === 'X')!
+---
+
+<Layout
+  title="Photo licensing"
+  description="How to use Colin Armstrong's photographs: free to share and adapt for non-commercial use with credit, under CC BY-NC 4.0. Commercial use needs a license."
+  image="/photos/yosemite.jpg"
+  schema={[
+    breadcrumbs([
+      { name: 'Photography', path: '/photography' },
+      { name: 'Licensing', path: license.page },
+    ]),
+  ]}
+>
+  <div class="container">
+    <header class="page-head">
+      <a class="back" href="/photography">
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M13 8H3.5M7.5 4l-4 4 4 4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.3"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+        Photography
+      </a>
+      <h1>Using my photos</h1>
+      <p class="summary">
+        Every photo on this site is mine. You're welcome to share and adapt them for anything non-commercial, as long as
+        you credit me. Commercial use needs a license from me.
+      </p>
+    </header>
+
+    <section class="section" aria-labelledby="license">
+      <div class="section-head">
+        <h2 id="license">License</h2>
+        <span class="meta">{license.name}</span>
+      </div>
+      <div class="prose">
+        <p>
+          All photos on armstr.ng are licensed under <a href={license.url} rel="license">{license.title}</a>
+          (<span class="nowrap">{license.name}</span>). You can copy, share and adapt them for any non-commercial purpose, as long as you credit
+          me, link to the license, and say if you changed the photo.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="sharing">
+      <div class="section-head">
+        <h2 id="sharing">Sharing</h2>
+      </div>
+      <div class="prose">
+        <p>
+          Posting a photo on social media, setting one as your wallpaper, or putting one in a personal blog or a school
+          project is fine without asking. Just credit me, and don't present it as your own work.
+        </p>
+      </div>
+      <figure class="credit">
+        <figcaption>Credit</figcaption>
+        <p class="credit-line">{license.credit}</p>
+        <CopyButton text={license.credit} />
+      </figure>
+      <div class="prose">
+        <p>
+          Where you can, link my name to armstr.ng and <span class="nowrap">“{license.name}”</span> to the license. On social media, tagging me
+          (<a href={x.href} rel="noopener">{x.handle}</a> on X) works too.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="commercial">
+      <div class="section-head">
+        <h2 id="commercial">Commercial use</h2>
+      </div>
+      <div class="prose">
+        <p>
+          The license doesn't cover commercial use, which needs a separate license from me. That includes advertising
+          and marketing, books and magazines, products and packaging, merchandise, prints for sale, and stock photo
+          sites. If you're not sure whether your use counts, ask.
+        </p>
+        <p>
+          To license a photo, email me at <a href={`mailto:${person.email}`}>{person.email}</a> with the photo (its
+          caption is enough), where it will appear, and for how long. I'm flexible on price for editorial work,
+          non-profits and small projects.
+        </p>
+      </div>
+    </section>
+  </div>
+</Layout>
+
+<style>
+  /* Short sections, so closer together than the site's usual 88px. */
+  .section {
+    margin-top: 64px;
+  }
+
+  .section-head {
+    margin-bottom: 20px;
+  }
+
+  /* "CC BY-NC 4.0" reads as one name, so it never breaks at its hyphen. */
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  /* The credit line to copy, on a card, with its label above it. */
+  .credit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    margin: 24px 0;
+    padding: 14px 14px 16px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .credit figcaption {
+    flex-basis: 100%;
+    color: var(--ink-3);
+    font-size: 15px;
+  }
+
+  .credit-line {
+    flex: 1 1 16em;
+    color: var(--ink);
+    font-size: 20px;
+    line-height: 1.45;
+  }
+
+  @media (max-width: 639px) {
+    .section {
+      margin-top: 48px;
+    }
+
+    .credit-line {
+      font-size: 18px;
+    }
+  }
+</style>

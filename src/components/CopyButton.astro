@@ -1,0 +1,51 @@
+---
+// A button that copies some text and says "Copied" for a moment: the email
+// address on Contact, and the credit line on Photo licensing.
+interface Props {
+  text: string
+}
+
+const { text } = Astro.props
+---
+
+<button class="btn copy" type="button" data-copy={text}>
+  <svg viewBox="0 0 16 16" aria-hidden="true">
+    <rect x="5.25" y="5.25" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"></rect>
+    <path
+      d="M10.75 5.25V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5.25a1.5 1.5 0 0 0 1.5 1.5h1.25"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.3"></path>
+  </svg>
+  <span data-label>Copy</span>
+</button>
+
+<script>
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+    const label = btn.querySelector('[data-label]')
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy ?? '')
+        if (label) {
+          label.textContent = 'Copied'
+          setTimeout(() => (label.textContent = 'Copy'), 1600)
+        }
+      } catch {
+        // Clipboard blocked: the text is still there to select.
+      }
+    })
+  }
+</script>
+
+<style>
+  .copy {
+    height: 36px;
+    padding: 0 14px;
+    color: var(--ink-2);
+    font-size: 16px;
+  }
+
+  .copy:hover {
+    color: var(--ink);
+  }
+</style>

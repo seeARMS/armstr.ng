@@ -3,10 +3,10 @@ export const prerender = true
 
 import Lightbox from '@/components/Lightbox.astro'
 import PhotoGrid from '@/components/PhotoGrid.astro'
+import PhotoHead from '@/components/PhotoHead.astro'
 import PhotoLicense from '@/components/PhotoLicense.astro'
-import PhotoTabs from '@/components/PhotoTabs.astro'
 import Layout from '@/layouts/Layout.astro'
-import { getPhotos, mainCamera, tabCounts } from '@/lib/photos'
+import { getPhotos, mainCamera } from '@/lib/photos'
 import { breadcrumbs, imageGallery } from '@/lib/schema'
 
 // The Markdown version of this page (photography.md.ts) repeats its copy; change both.
@@ -25,15 +25,7 @@ const camera = mainCamera(photos)
   ]}
 >
   <div class="container wide">
-    <header class="page-head">
-      <h1>Photography</h1>
-      <p class="summary">
-        Wildlife, landscape, and astrophotography{camera && <>, mostly on a {camera}</>}. Open any photo to see how and
-        where it was taken.
-      </p>
-    </header>
-
-    <PhotoTabs current="all" counts={tabCounts(photos)} />
+    <PhotoHead current="all" camera={camera}>Open any photo to see how and where it was taken.</PhotoHead>
     <PhotoGrid photos={photos} />
     <PhotoLicense />
   </div>

@@ -732,6 +732,61 @@ a:hover .stroke {
   animation-timing-function: var(--ease);
 }
 
+/* Photos carried across (PhotoGrid.astro) glide to their new places, a
+   little slower than the page fades around them. The old picture holds
+   until the new one has eased in over it; photos leaving fade where they
+   were, and ones arriving rise into place. */
+::view-transition-group(.photo) {
+  animation-duration: 620ms;
+  animation-timing-function: var(--ease);
+}
+
+::view-transition-old(.photo) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(.photo) {
+  animation: photo-show 620ms var(--ease) both;
+  mix-blend-mode: normal;
+}
+
+/* Out of the way quickly, so the ones arriving find their place clear. */
+::view-transition-old(.photo):only-child {
+  animation: photo-leave 200ms ease-out both;
+}
+
+::view-transition-new(.photo):only-child {
+  animation: photo-arrive 460ms var(--ease) 220ms both;
+}
+
+@keyframes photo-show {
+  0%,
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes photo-leave {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes photo-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+/* The rule under the open Photography view slides to the next one. */
+::view-transition-group(photo-views-mark) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease);
+}
+
 /* The theme switch spreads out from the toggle like ink into paper (the
    circle itself is animated in Layout.astro). */
 :root[data-theme-swap]::view-transition-old(root),

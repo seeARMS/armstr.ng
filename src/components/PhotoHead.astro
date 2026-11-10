@@ -1,0 +1,221 @@
+---
+// The Photography pages' title, their three views (grid, one photo per row,
+// and the map), and the sentence about them. On the grid pages, the
+// collections named in the sentence are links that show just that collection;
+// the open one's underline is in ink, and it leads back to every photo. The
+// sentence's second half is the slot. Each page's Markdown version repeats
+// this copy (photography.md.ts, [collection].md.ts, map.md.ts); change both.
+import { collections, type Collection } from '@/data/photos'
+
+interface Props {
+  current: 'all' | Collection | 'map'
+  /** "mostly on a Canon EOS R5", from the photos themselves. */
+  camera?: string
+}
+
+const { current, camera } = Astro.props
+const onMap = current === 'map'
+
+const pick = (key: Collection) =>
+  key === current
+    ? { href: '/photography', class: 'link cat', 'data-on': '', title: 'Show every photo' }
+    : { href: `/photography/${key}`, class: 'link cat' }
+const word = (key: Collection) => collections[key].phrase
+// What a screen reader hears after the open collection's words.
+const hint = ' (shown; show every photo)'
+---
+
+<header class="page-head">
+  <div class="title">
+    <h1>Photography</h1>
+    <nav class="views" aria-label="Views" data-views data-at={onMap ? '2' : '0'}>
+      {
+        onMap ? (
+          <>
+            <a href="/photography" data-view-pick="grid" aria-label="Grid" title="Grid">
+              <svg viewBox="0 0 18 18" aria-hidden="true">
+                <rect x="2.5" y="2.5" width="5.5" height="7.5" rx="1" />
+                <rect x="10" y="2.5" width="5.5" height="4.5" rx="1" />
+                <rect x="2.5" y="12" width="5.5" height="3.5" rx="1" />
+                <rect x="10" y="9" width="5.5" height="6.5" rx="1" />
+              </svg>
+            </a>
+            <a href="/photography" data-view-pick="list" aria-label="One per row" title="One per row">
+              <svg viewBox="0 0 18 18" aria-hidden="true">
+                <rect x="2.5" y="2.5" width="13" height="5.5" rx="1" />
+                <rect x="2.5" y="10" width="13" height="5.5" rx="1" />
+              </svg>
+            </a>
+          </>
+        ) : (
+          <>
+            <button type="button" data-view-pick="grid" aria-pressed="true" aria-label="Grid" title="Grid">
+              <svg viewBox="0 0 18 18" aria-hidden="true">
+                <rect x="2.5" y="2.5" width="5.5" height="7.5" rx="1" />
+                <rect x="10" y="2.5" width="5.5" height="4.5" rx="1" />
+                <rect x="2.5" y="12" width="5.5" height="3.5" rx="1" />
+                <rect x="10" y="9" width="5.5" height="6.5" rx="1" />
+              </svg>
+            </button>
+            <button type="button" data-view-pick="list" aria-pressed="false" aria-label="One per row" title="One per row">
+              <svg viewBox="0 0 18 18" aria-hidden="true">
+                <rect x="2.5" y="2.5" width="13" height="5.5" rx="1" />
+                <rect x="2.5" y="10" width="13" height="5.5" rx="1" />
+              </svg>
+            </button>
+          </>
+        )
+      }
+      <a href="/photography/map" aria-label="Map" title="Map" aria-current={onMap ? 'page' : undefined}>
+        <svg viewBox="0 0 18 18" aria-hidden="true">
+          <path d="M2 4.5 6.5 2.5l5 2 4.5-2v11l-4.5 2-5-2-4.5 2z" />
+          <path d="M6.5 2.5v11M11.5 4.5v11" />
+        </svg>
+      </a>
+      <span class="mark" aria-hidden="true"></span>
+    </nav>
+  </div>
+
+  {
+    onMap ? (
+      <p class="summary">
+        <slot />
+      </p>
+    ) : (
+      <p class="summary" data-filtered={current === 'all' ? undefined : ''}>
+        <a {...pick('wildlife')}>{word('wildlife')}{current === 'wildlife' && <span class="visually-hidden">{hint}</span>}</a>, <a {...pick('landscape')}>{word('landscape')}{current === 'landscape' && <span class="visually-hidden">{hint}</span>}</a>, <a {...pick('astro')}>{word('astro')}{current === 'astro' && <span class="visually-hidden">{hint}</span>}</a> and the odd <a {...pick('abstract')}>{word('abstract')}{current === 'abstract' && <span class="visually-hidden">{hint}</span>}</a>{camera && <>, mostly on a {camera}</>}. <slot />
+      </p>
+    )
+  }
+</header>
+
+<script>
+  // On the map, the grid and row icons are links to every photo; each says
+  // which view to open there (PhotoGrid.astro reads it).
+  for (const a of document.querySelectorAll<HTMLAnchorElement>('a[data-view-pick]')) {
+    a.addEventListener('click', () => {
+      try {
+        localStorage.setItem('photo-view', a.dataset.viewPick === 'list' ? 'rows' : 'grid')
+      } catch {}
+    })
+  }
+</script>
+
+<style>
+  .title {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  /* Three quiet icons. The open one is in ink, with a short rule under it
+     that slides to the next one picked, across pages too. */
+  .views {
+    position: relative;
+    display: flex;
+    flex: none;
+    margin-right: -7px;
+    margin-bottom: 2px;
+  }
+
+  .views :is(a, button) {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--ink-3);
+    cursor: pointer;
+    transition: color 160ms;
+  }
+
+  .views :is(a, button):hover {
+    color: var(--ink);
+  }
+
+  .views :is([aria-pressed='true'], [aria-current]) {
+    color: var(--ink);
+  }
+
+  .views :is(a, button):focus-visible {
+    outline: 1.5px solid var(--blue);
+    outline-offset: -3px;
+  }
+
+  .views svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.3;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  .mark {
+    position: absolute;
+    bottom: 0;
+    left: 10px;
+    width: 16px;
+    height: 1px;
+    background: var(--ink);
+    transform: translateX(calc(var(--at, 0) * 36px));
+    transition: transform 420ms var(--ease);
+    view-transition-name: photo-views-mark;
+  }
+
+  .views[data-at='1'] {
+    --at: 1;
+  }
+
+  .views[data-at='2'] {
+    --at: 2;
+  }
+
+  /* The grid and the rows are a script's doing; without one, just the map. */
+  @media (scripting: none) {
+    .views button,
+    .views:not([data-at='2']) .mark {
+      display: none;
+    }
+  }
+
+  /* The collections in the sentence: in ink, so they read as the choices. */
+  .summary :global(.cat) {
+    color: var(--ink);
+  }
+
+  /* With one open, the others step back, and its underline inks in. */
+  .summary[data-filtered] :global(.cat:not([data-on])) {
+    color: var(--ink-2);
+  }
+
+  .summary :global(.cat[data-on]) {
+    background-image: linear-gradient(var(--blue), var(--blue)), linear-gradient(var(--ink), var(--ink));
+    animation: ink-in 640ms var(--ease) 80ms backwards;
+  }
+
+  @keyframes ink-in {
+    from {
+      background-size:
+        0 1px,
+        0 1px;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .views :is(a, button) {
+      width: 32px;
+      height: 32px;
+    }
+
+    .mark {
+      left: 8px;
+      transform: translateX(calc(var(--at, 0) * 32px));
+    }
+  }
+</style>

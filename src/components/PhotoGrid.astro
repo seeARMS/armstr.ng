@@ -1,73 +1,233 @@
 ---
-// The Photography pages' grid: every photo it's given, shuffled.
+// The Photography pages' photos, shuffled: a grid, or one per row with what
+// each shows and how it was taken (the icons in PhotoHead.astro switch).
+import PhotoDevelop from '@/components/PhotoDevelop.astro'
 import PhotoThumb from '@/components/PhotoThumb.astro'
-import type { Photo } from '@/lib/photos'
+import { collectionKeys, type Photo } from '@/lib/photos'
 
 interface Props {
   photos: Photo[]
 }
 
 const { photos } = Astro.props
+const GRID = '(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 300px'
+const ROWS = '(max-width: 639px) calc(100vw - 40px), (max-width: 899px) calc(100vw - 48px), 800px'
+// The pages that show this grid, between which its photos glide.
+const pages = ['/photography', ...collectionKeys.map((key) => `/photography/${key}`)].join(' ')
 ---
 
-<div class="grid" data-grid data-photo-set>
+<div class="grid" data-grid data-photo-set data-view="grid" data-sizes-grid={GRID} data-sizes-rows={ROWS} data-pages={pages}>
   {
     photos.map((p) => (
-      <PhotoThumb photo={p} widths={[400, 800, 1200]} sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 300px" />
+      <figure class="item" data-id={p.name} data-night={p.night ? '' : undefined} style={`--ar: ${(p.image.width / p.image.height).toFixed(4)}`}>
+        <PhotoThumb photo={p} widths={[400, 800, 1200, 1600]} sizes={GRID} />
+        <figcaption class="about">
+          {p.caption && <p class="about-what">{p.caption}</p>}
+          {p.place && (
+            <p class="about-when">
+              <a class="link" href={`/photography/map#${p.place.slug}`}>{p.place.label}</a>
+            </p>
+          )}
+          {p.date && <p class="about-when">{p.date}</p>}
+          {p.note && <p class="about-note">{p.note}</p>}
+          {p.chips.length > 0 && <p class="about-how">{p.chips.join(', ')}</p>}
+        </figcaption>
+      </figure>
     ))
   }
 </div>
 
+<PhotoDevelop />
+
 <!-- Runs as soon as the grid is parsed, before the page is first drawn, so
-     the photos never move once they're on screen. The order is fresh for
-     each visit and kept in history.state, so a reload, or Safari
-     restoring the page behind its snapshot, shows the same order. The
-     first photo matches the sky outside: after dark it's one of the
-     night-sky shots, and by day it never is. Photos
-     that arrive once the page is showing fade in; ones already at hand
-     (cached, or loaded while Chrome prerendered the page) just appear. -->
+     the photos never move once they're on screen.
+
+     Order: one shuffle per visit, from a seed kept for the tab, so each
+     collection is the full grid with the other photos taken out, in the same
+     order, and a reload or a step back shows the same order. A visit from
+     anywhere else gets a fresh one. The first photo matches the sky outside:
+     after dark it's a night-sky shot, and by day it never is.
+
+     View: the grid, or one photo per row, as last picked.
+
+     Motion: the photos on screen are named for the page transition, so
+     going from every photo to one collection (or back), or between the two
+     views, glides each one to its new place; the rest fade. -->
 <script is:inline>
   ;(() => {
     const grid = document.querySelector('[data-grid]')
-    const thumbs = Array.from(grid.children)
-    const n = thumbs.length
-    const state = history.state && typeof history.state === 'object' ? history.state : {}
-    let order = state.photoOrder
-    const valid = Array.isArray(order) && order.length === n && new Set(order).size === n && order.every((i) => thumbs[i])
-    if (!valid) {
-      order = thumbs.map((_, i) => i)
-      for (let i = n - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[order[i], order[j]] = [order[j], order[i]]
-      }
-      const hour = new Date().getHours()
-      const dark = hour >= 20 || hour < 6
-      const lead = order.findIndex((i) => thumbs[i].hasAttribute('data-night') === dark)
-      if (lead > 0) order.unshift(...order.splice(lead, 1))
-      try {
-        history.replaceState({ ...state, photoOrder: order }, '')
-      } catch {}
-    }
-    grid.append(...order.map((i) => thumbs[i]))
+    const items = Array.from(grid.children)
+    const pages = grid.dataset.pages.split(' ')
+    const isGridPage = (url) => pages.includes(new URL(url, location.href).pathname)
 
-    let shownAt = document.prerendering ? Infinity : performance.now()
-    document.addEventListener('prerenderingchange', () => (shownAt = performance.now()), { once: true })
-    for (const img of grid.querySelectorAll('img')) {
-      if (img.complete) {
-        img.dataset.loaded = ''
-        continue
-      }
-      img.addEventListener(
-        'load',
-        () => {
-          img.dataset.loaded = ''
-          if (performance.now() - shownAt > 200) {
-            img.animate({ opacity: [0, 1] }, { duration: 600, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' })
-          }
-        },
-        { once: true },
-      )
+    let seed
+    try {
+      const how = performance.getEntriesByType('navigation')[0]?.type
+      const from = document.referrer && new URL(document.referrer)
+      const within = from && from.origin === location.origin && /^\/photography(\/|$)/.test(from.pathname)
+      const stay = how === 'reload' || how === 'back_forward' || within
+      seed = (stay && sessionStorage.getItem('photo-seed')) || String(Math.random()).slice(2)
+      sessionStorage.setItem('photo-seed', seed)
+    } catch {
+      seed = String(Math.random()).slice(2)
     }
+    const rank = (id) => {
+      let h = 2166136261
+      for (const c of seed + id) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
+      h = Math.imul(h ^ (h >>> 16), 0x85ebca6b)
+      h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)
+      return (h ^ (h >>> 16)) >>> 0
+    }
+    // A page Chrome prerendered kept its own copy of the tab's storage; make
+    // sure the seed it used is the tab's, for the pages that follow.
+    document.addEventListener(
+      'prerenderingchange',
+      () => {
+        try {
+          sessionStorage.setItem('photo-seed', seed)
+        } catch {}
+      },
+      { once: true },
+    )
+    const ranks = new Map(items.map((el) => [el, rank(el.dataset.id)]))
+    items.sort((a, b) => ranks.get(a) - ranks.get(b))
+    const hour = new Date().getHours()
+    const dark = hour >= 20 || hour < 6
+    const lead = items.findIndex((el) => el.hasAttribute('data-night') === dark)
+    if (lead > 0) items.unshift(...items.splice(lead, 1))
+    grid.append(...items)
+
+    const views = document.querySelector('[data-views]')
+    const buttons = views ? Array.from(views.querySelectorAll('button[data-view-pick]')) : []
+    const imgs = Array.from(grid.querySelectorAll('img'))
+    const saved = () => {
+      try {
+        return localStorage.getItem('photo-view') === 'rows' ? 'rows' : 'grid'
+      } catch {
+        return 'grid'
+      }
+    }
+    // The grid reads left to right: each photo goes into the shortest
+    // column, in order. A collection is then the full grid with gaps closed
+    // up, so the photos near the top stay near the top and slide into place.
+    // (CSS columns fill one column at a time, so taking photos out would
+    // reshuffle every column.) Without a script, the CSS columns stand.
+    const narrow = matchMedia('(max-width: 639px)')
+    let laidOut = 0
+    const layout = () => {
+      const width = grid.clientWidth
+      if (grid.dataset.view !== 'grid' || !width) {
+        if (!grid.hasAttribute('data-masonry')) return
+        grid.removeAttribute('data-masonry')
+        grid.style.removeProperty('height')
+        for (const item of grid.children) for (const p of ['left', 'top', 'width']) item.style.removeProperty(p)
+        laidOut = 0
+        return
+      }
+      if (width === laidOut) return
+      const gap = narrow.matches ? 8 : 12
+      const count = narrow.matches ? 2 : Math.max(1, Math.min(4, Math.floor((width + gap) / (240 + gap))))
+      const column = (width - gap * (count - 1)) / count
+      const heights = new Array(count).fill(0)
+      for (const item of grid.children) {
+        let c = 0
+        for (let i = 1; i < count; i++) if (heights[i] < heights[c] - 1) c = i
+        item.style.left = `${c * (column + gap)}px`
+        item.style.top = `${heights[c]}px`
+        item.style.width = `${column}px`
+        heights[c] += column / (parseFloat(item.style.getPropertyValue('--ar')) || 1.5) + gap
+      }
+      grid.style.height = `${Math.max(...heights) - gap}px`
+      grid.dataset.masonry = ''
+      laidOut = width
+    }
+    new ResizeObserver(layout).observe(grid)
+
+    const apply = (view) => {
+      grid.dataset.view = view
+      layout()
+      const sizes = view === 'rows' ? grid.dataset.sizesRows : grid.dataset.sizesGrid
+      for (const img of imgs) if (img.sizes !== sizes) img.sizes = sizes
+      if (views) views.dataset.at = view === 'rows' ? '1' : '0'
+      for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.viewPick === (view === 'rows' ? 'list' : 'grid')))
+    }
+    apply(saved())
+    // A page Chrome prerendered may have been laid out before the view last changed.
+    document.addEventListener('prerenderingchange', () => apply(saved()), { once: true })
+    // The first screenful loads at once, not when the browser gets round to
+    // lazy ones: arriving from another collection, these are the photos just
+    // on screen, and the page transition needs them there as it glides.
+    for (const img of imgs) if (img.getBoundingClientRect().top < innerHeight * 1.25) img.loading = 'eager'
+
+    let named = []
+    const clear = () => {
+      for (const el of named) {
+        el.style.viewTransitionName = ''
+        el.querySelector('img').decoding = 'async'
+      }
+      named = []
+    }
+    // The photos on screen, and a little either side, by their own names.
+    // Chrome leaves a photo blank in the transition's snapshot while it's set
+    // to decode in the background, so the ones carried across decode as
+    // usual until it's done.
+    const nameOnScreen = () => {
+      clear()
+      const above = -innerHeight * 0.25
+      const below = innerHeight * 1.25
+      for (const item of grid.children) {
+        const thumb = item.firstElementChild
+        const box = thumb.getBoundingClientRect()
+        if (!box.width || box.bottom < above || box.top > below) continue
+        thumb.style.viewTransitionName = 'photo-' + item.dataset.id.replace(/[^\w-]/g, '_')
+        thumb.querySelector('img').decoding = 'sync'
+        named.push(thumb)
+      }
+    }
+
+    addEventListener('pageswap', (e) => {
+      if (!e.viewTransition) return
+      const to = e.activation?.entry?.url
+      if (!to || isGridPage(to)) nameOnScreen()
+    })
+    addEventListener('pagereveal', (e) => {
+      const from = window.navigation?.activation?.from?.url || document.referrer
+      if (!e.viewTransition || !from || !isGridPage(from)) return
+      nameOnScreen()
+      e.viewTransition.finished.finally(clear)
+    })
+
+    // Switching views keeps the photo nearest the top of the screen where it
+    // is, unless the page is still at its head.
+    const pickView = (view) => {
+      if (grid.dataset.view === view) return
+      try {
+        localStorage.setItem('photo-view', view)
+      } catch {}
+      const top = grid.getBoundingClientRect().top
+      const anchor =
+        top < 0 ? Array.from(grid.children).find((el) => el.firstElementChild.getBoundingClientRect().bottom > 64) : null
+      const at = anchor?.firstElementChild.getBoundingClientRect().top
+      const update = () => {
+        apply(view)
+        if (anchor) scrollBy({ top: anchor.firstElementChild.getBoundingClientRect().top - at, behavior: 'instant' })
+        nameOnScreen()
+      }
+      if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        update()
+        clear()
+        return
+      }
+      nameOnScreen()
+      let move
+      try {
+        move = document.startViewTransition({ update, types: ['photo-view'] })
+      } catch {
+        move = document.startViewTransition(update)
+      }
+      move.finished.finally(clear)
+    }
+    for (const b of buttons) b.addEventListener('click', () => pickView(b.dataset.viewPick === 'list' ? 'rows' : 'grid'))
   })()
 </script>
 
@@ -78,17 +238,102 @@ const { photos } = Astro.props
     column-gap: 12px;
   }
 
-  .grid :global(.thumb) {
-    width: 100%;
+  .item {
     margin: 0 0 12px;
     break-inside: avoid;
   }
 
-  /* A photo stays hidden until it has loaded (the script above fades in the
-     ones that arrive late). Without a script they simply appear. */
-  @media (scripting: enabled) {
-    .grid :global(img:not([data-loaded])) {
-      opacity: 0;
+  .item :global(.thumb) {
+    view-transition-class: photo;
+  }
+
+  .grid[data-masonry] {
+    position: relative;
+    columns: auto;
+  }
+
+  .grid[data-masonry] .item {
+    position: absolute;
+    margin: 0;
+  }
+
+  .about {
+    display: none;
+  }
+
+  /* One per row: each photo as large as the screen allows, with a label
+     beside it, as on a gallery wall. */
+  .grid[data-view='rows'] {
+    display: flex;
+    flex-direction: column;
+    gap: 96px;
+    columns: auto;
+  }
+
+  .grid[data-view='rows'] .item {
+    display: flex;
+    align-items: flex-end;
+    gap: 36px;
+    margin: 0;
+  }
+
+  .grid[data-view='rows'] :global(.thumb) {
+    flex: none;
+    width: min(calc(100% - 296px), calc(82svh * var(--ar)));
+  }
+
+  .grid[data-view='rows'] .about {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    max-width: 260px;
+  }
+
+  .about-what {
+    color: var(--ink);
+    font-size: 19px;
+    line-height: 1.35;
+  }
+
+  .about-when {
+    margin-top: 2px;
+    color: var(--ink-2);
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
+  .about-note {
+    margin-top: 12px;
+    color: var(--ink-prose);
+    font-size: 17px;
+    line-height: 1.55;
+  }
+
+  .about-how {
+    margin-top: 12px;
+    color: var(--ink-3);
+    font-size: 14.5px;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 899px) {
+    .grid[data-view='rows'] {
+      gap: 64px;
+    }
+
+    .grid[data-view='rows'] .item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .grid[data-view='rows'] :global(.thumb) {
+      width: min(100%, calc(86svh * var(--ar)));
+    }
+
+    .grid[data-view='rows'] .about {
+      max-width: 34em;
     }
   }
 
@@ -99,8 +344,12 @@ const { photos } = Astro.props
       column-gap: 8px;
     }
 
-    .grid :global(.thumb) {
+    .item {
       margin-bottom: 8px;
+    }
+
+    .grid[data-view='rows'] {
+      gap: 52px;
     }
   }
 </style>

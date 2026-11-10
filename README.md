@@ -10,7 +10,7 @@ Astro on Cloudflare Workers. The design is set in [Newsreader](https://fonts.goo
 | --- | --- |
 | Bio facts, projects, work history, podcasts & press, social links | `src/data/profile.ts` |
 | Photo captions, collections (wildlife, landscape, astro, abstract) and where each was taken | `src/data/photos.ts` |
-| Photography map (`/photography/map`: a MapLibre globe on OpenFreeMap tiles, with AWS terrain tiles for the 3D) | `src/pages/photography/map.astro` |
+| Photography map (`/photography/map`: Natural Earth coastlines drawn at build time, with a California inset) | `src/pages/photography/map.astro`, `src/lib/atlas.ts` |
 | Photos (camera settings come from their EXIF at build time) | `src/assets/photos/` |
 | Posts | Pulled from the Paragraph API when the site builds (`src/lib/getAllArticles.js`) |
 | Images in posts (resized to WebP, real dimensions, blurred preview) | `src/lib/post-images.ts`, with sizes and previews from `scripts/post-images.mjs` |

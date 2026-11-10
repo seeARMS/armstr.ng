@@ -5,10 +5,18 @@
 
 export type Collection = 'wildlife' | 'landscape' | 'astro' | 'abstract'
 
-/** The Photography page's collections, in the order its tabs list them. */
-export const collections: Record<Collection, { name: string; title: string; summary: string; description: string }> = {
+/**
+ * The Photography page's collections, in the order its opening sentence names
+ * them. `phrase` is the collection's words in that sentence ("Wildlife,
+ * landscapes, the night sky and the odd abstract"), which pick it.
+ */
+export const collections: Record<
+  Collection,
+  { name: string; phrase: string; title: string; summary: string; description: string }
+> = {
   wildlife: {
     name: 'Wildlife',
+    phrase: 'Wildlife',
     title: 'Wildlife photography',
     summary:
       'Moose, loons, birds of prey, monkeys and a sloth, from the marshes of Algonquin Park to the rainforest along the Panama Canal.',
@@ -17,6 +25,7 @@ export const collections: Record<Collection, { name: string; title: string; summ
   },
   landscape: {
     name: 'Landscape',
+    phrase: 'landscapes',
     title: 'Landscape photography',
     summary: 'Mountains, coastlines and sunsets: Patagonia, Yosemite, Big Sur, Napa Valley, Meteora and Santorini.',
     description:
@@ -24,6 +33,7 @@ export const collections: Record<Collection, { name: string; title: string; summ
   },
   astro: {
     name: 'Astro',
+    phrase: 'the night sky',
     title: 'Astrophotography',
     summary:
       'The Milky Way from dark skies in Ontario and Mendocino County, and the Moon over the South Bay and Algonquin Park.',
@@ -32,6 +42,7 @@ export const collections: Record<Collection, { name: string; title: string; summ
   },
   abstract: {
     name: 'Abstract',
+    phrase: 'abstract',
     title: 'Abstract photography',
     summary: 'Patterns in water, up close: swirls of foam below a spillway, and algae on the surface.',
     description: 'Abstract photographs by Colin Armstrong: foam and algae patterns on moving water.',
@@ -74,7 +85,11 @@ export const places = {
 
 export type PlaceSlug = keyof typeof places
 
-export const photos: Record<string, { caption: string; collection: Collection; place: PlaceSlug }> = {
+/**
+ * What each photo shows. `note`, when there is one, is a line or two about it
+ * that the Photography page's one-per-row view prints under the photo.
+ */
+export const photos: Record<string, { caption: string; collection: Collection; place: PlaceSlug; note?: string }> = {
   '4V3A0065-HDR': { caption: 'Moon in the clouds', collection: 'astro', place: 'algonquin' },
   '4V3A0104-HDR': { caption: 'Moon above a cloud', collection: 'astro', place: 'algonquin' },
   '4V3A0934-Enhanced-NR': { caption: 'Bobcat', collection: 'wildlife', place: 'san-jose-foothills' },

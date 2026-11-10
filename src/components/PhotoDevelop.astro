@@ -1,0 +1,39 @@
+---
+// Photos that arrive once the page is showing develop into place, like a
+// print in the tray: out of their color wash, from soft to sharp. Ones
+// already at hand (cached, loaded while Chrome prerendered the page, or
+// carried over by a page transition) just appear. Include once per page,
+// after its photos (PhotoThumb.astro).
+---
+
+<script is:inline>
+  ;(() => {
+    let shownAt = document.prerendering ? Infinity : performance.now()
+    document.addEventListener('prerenderingchange', () => (shownAt = performance.now()), { once: true })
+    // Arriving through a page transition, the photos glide in from the last
+    // page, where they were already showing, so they appear as they load.
+    let gliding = false
+    addEventListener('pagereveal', (e) => {
+      if (!e.viewTransition) return
+      gliding = true
+      e.viewTransition.finished.finally(() => (gliding = false))
+    })
+    const calm = matchMedia('(prefers-reduced-motion: reduce)')
+    for (const img of document.querySelectorAll('[data-photo] img:not([data-loaded])')) {
+      if (img.complete) {
+        img.dataset.loaded = ''
+        continue
+      }
+      const done = () => {
+        img.dataset.loaded = ''
+        if (calm.matches || gliding || performance.now() - shownAt < 200) return
+        img.animate(
+          { opacity: [0, 1], filter: ['blur(14px) saturate(0.7)', 'blur(0) saturate(1)'], transform: ['scale(1.03)', 'none'] },
+          { duration: 820, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' },
+        )
+      }
+      img.addEventListener('load', done, { once: true })
+      img.addEventListener('error', () => (img.dataset.loaded = ''), { once: true })
+    }
+  })()
+</script>

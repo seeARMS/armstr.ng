@@ -1,6 +1,6 @@
 // Photography as Markdown, for agents (see src/worker.ts): every photo with
 // its caption, where and how it was taken. Its copy repeats
-// photography.astro's; change both.
+// photography.astro's and PhotoHead.astro's; change both.
 import type { APIRoute } from 'astro'
 import { collections } from '@/data/photos'
 import { abs, frontMatter, link, markdown } from '@/lib/markdown'
@@ -21,7 +21,7 @@ export const GET: APIRoute = async () => {
       url: abs('/photography'),
     }),
     '# Photography',
-    `Wildlife, landscape, and astrophotography${camera ? `, mostly on a ${camera}` : ''}. Each photo below is followed by what it shows, and when, where and how it was taken.`,
+    `Wildlife, landscapes, the night sky and the odd abstract${camera ? `, mostly on a ${camera}` : ''}. Each photo below is followed by what it shows, and when, where and how it was taken.`,
     `By collection: ${collectionKeys.map((key) => `${link(collections[key].name, abs(`/photography/${key}.md`))} (${counts[key] ?? 0})`).join(', ')}. The ${link('map', abs('/photography/map.md'))} lists every place.`,
     photos.map((photo) => photoMarkdown(photo, abs)).join('\n'),
     licenseMarkdown(),
